@@ -1,0 +1,25 @@
+[project]
+name = "eld-backend"
+version = "1.0.0"
+description = "HOS-compliant trip planner and ELD log generator"
+requires-python = ">=3.12"
+dependencies = [
+    "django>=5.1,<6.0",
+    "djangorestframework>=3.15",
+    "django-cors-headers>=4.4",
+    "psycopg[binary]>=3.2",
+    "dj-database-url>=2.2",
+    "gunicorn>=23.0",
+    "whitenoise>=6.7",
+    "requests>=2.32",
+    "python-dotenv>=1.0",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.3", "pytest-django>=4.9"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+python_files = ["test_*.py"]
+testpaths = ["tests"]
+pythonpath = ["."]

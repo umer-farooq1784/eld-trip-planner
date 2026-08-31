@@ -1,0 +1,19 @@
+#!/bin/sh
+# Guard: this repo must only ever carry commits from the personal account.
+# Enabled via `git config core.hooksPath .githooks` (see README).
+
+EXPECTED_EMAIL="umerfarrooq987@gmail.com"
+ACTUAL_EMAIL="$(git config user.email)"
+
+if [ "$ACTUAL_EMAIL" != "$EXPECTED_EMAIL" ]; then
+    echo "" >&2
+    echo "  Commit blocked: wrong author email." >&2
+    echo "    configured: ${ACTUAL_EMAIL:-<unset>}" >&2
+    echo "    expected:   $EXPECTED_EMAIL" >&2
+    echo "" >&2
+    echo "  Fix it with:" >&2
+    echo "    git config --local user.email $EXPECTED_EMAIL" >&2
+    echo "    git config --local user.name \"Muhammad Umer Farooq\"" >&2
+    echo "" >&2
+    exit 1
+fi
