@@ -23,3 +23,7 @@ DJANGO_SETTINGS_MODULE = "config.settings"
 python_files = ["test_*.py"]
 testpaths = ["tests"]
 pythonpath = ["."]
+filterwarnings = [
+    # whitenoise warns until `collectstatic` has run; irrelevant to the suite.
+    "ignore:No directory at:UserWarning",
+]

@@ -37,6 +37,7 @@ class Trip(models.Model):
     cycle_hours_at_end = models.FloatField()
     route_geometry = models.JSONField(default=list)
     legs = models.JSONField(default=list)
+    route_is_estimated = models.BooleanField(default=False)
 
     class Meta:
         ordering = ("-created_at",)
@@ -110,3 +111,32 @@ class DailyLog(models.Model):
     @property
     def total_hours(self) -> float:
         return self.off_hours + self.sleeper_hours + self.driving_hours + self.on_duty_hours
+
+
+class PlaceCache(models.Model):
+    """Reverse-geocode results, keyed by a coarse lat/lon grid.
+
+    Remarks need a city and state at every duty change, which on a long trip
+    means a dozen or more reverse lookups. Snapping to a ~3.5 mile grid means
+    stops in the same town resolve once, which keeps the request fast and
+    stays well inside the provider's rate limit.
+    """
+
+    grid_key = models.CharField(max_length=32, unique=True)
+    lat = models.FloatField()
+    lon = models.FloatField()
+    label = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    GRID_DEGREES = 0.05
+
+    class Meta:
+        verbose_name_plural = "place cache"
+
+    def __str__(self) -> str:
+        return f"{self.grid_key} -> {self.label}"
+
+    @classmethod
+    def key_for(cls, lat: float, lon: float) -> str:
+        step = cls.GRID_DEGREES
+        return f"{round(lat / step) * step:.2f},{round(lon / step) * step:.2f}"
