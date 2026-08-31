@@ -25,6 +25,21 @@ from trips.services.hos import (
 TOL = 1e-6
 START = datetime(2026, 9, 1, 6, 0)
 
+# The legal limits, written out as literals on purpose.
+#
+# The checker below must NOT import these from the module it is checking. If it
+# did, a mutation that loosened a limit in the engine would loosen the
+# assertion along with it, and the test would keep passing while the app
+# started producing illegal logs. (Verified: raising MAX_DRIVE_PER_SHIFT to 12
+# used to leave all tests green.)
+LIMIT_DRIVE_PER_SHIFT = 11.0    # 395.3(a)(3)
+LIMIT_DUTY_WINDOW = 14.0        # 395.3(a)(2)
+LIMIT_DRIVE_BEFORE_BREAK = 8.0  # 395.3(a)(3)(ii)
+LIMIT_CYCLE = 70.0              # 395.3(b)(2)
+MIN_BREAK = 0.5
+MIN_DAILY_RESET = 10.0
+MIN_CYCLE_RESTART = 34.0
+
 
 def build(leg1: tuple[float, float], leg2: tuple[float, float], cycle: float = 0.0):
     """Two legs given as (miles, hours)."""
@@ -64,16 +79,16 @@ def assert_compliant(sim):
         previous_end = seg.end
 
         if seg.duty is Duty.DRIVING:
-            assert drive_in_shift + seg.hours <= hos.MAX_DRIVE_PER_SHIFT + TOL, (
+            assert drive_in_shift + seg.hours <= LIMIT_DRIVE_PER_SHIFT + TOL, (
                 f"11-hour driving limit exceeded at {seg.start}"
             )
-            assert window + seg.hours <= hos.MAX_DUTY_WINDOW + TOL, (
+            assert window + seg.hours <= LIMIT_DUTY_WINDOW + TOL, (
                 f"14-hour driving window exceeded at {seg.start}"
             )
-            assert drive_since_break + seg.hours <= hos.MAX_DRIVE_BEFORE_BREAK + TOL, (
+            assert drive_since_break + seg.hours <= LIMIT_DRIVE_BEFORE_BREAK + TOL, (
                 f"drove past 8 cumulative hours without a break at {seg.start}"
             )
-            assert cycle + seg.hours <= CYCLE_LIMIT_HOURS + TOL, (
+            assert cycle + seg.hours <= LIMIT_CYCLE + TOL, (
                 f"70-hour cycle exceeded while driving at {seg.start}"
             )
             drive_in_shift += seg.hours
@@ -82,15 +97,15 @@ def assert_compliant(sim):
             cycle += seg.hours
         else:
             qualifies_as_reset = (
-                seg.duty in (Duty.OFF, Duty.SB) and seg.hours >= hos.DAILY_RESET - TOL
+                seg.duty in (Duty.OFF, Duty.SB) and seg.hours >= MIN_DAILY_RESET - TOL
             )
             if qualifies_as_reset:
                 drive_in_shift = window = drive_since_break = 0.0
-                if seg.hours >= hos.CYCLE_RESTART - TOL:
+                if seg.hours >= MIN_CYCLE_RESTART - TOL:
                     cycle = 0.0
             else:
                 window += seg.hours
-                if seg.hours >= hos.REQUIRED_BREAK - TOL:
+                if seg.hours >= MIN_BREAK - TOL:
                     drive_since_break = 0.0
                 if seg.duty is Duty.ON_DUTY:
                     cycle += seg.hours
@@ -322,3 +337,109 @@ def test_rejects_out_of_range_cycle_hours(cycle, message):
 def test_rejects_wrong_number_of_legs():
     with pytest.raises(HosError, match="exactly two legs"):
         TripInput(legs=[Leg("A", "B", 10, 1)], cycle_used_hours=0, start_at=START)
+
+
+# ---------------------------------------------------------------------------
+# The 14-hour window, exercised deliberately
+# ---------------------------------------------------------------------------
+
+
+def test_14_hour_window_binds_before_the_driving_limit(monkeypatch):
+    """The 14-hour window is consecutive clock time, not driving time.
+
+    Under the brief's own assumptions this clock never strictly binds: the most
+    non-driving time one shift can accumulate is exactly three hours (1 h
+    pickup, 1 h dropoff, a 30-minute break, a 30-minute fuel stop), so 11 hours
+    of driving always reaches its wall first or at the very same instant. A
+    broken window rule would therefore sail through every realistic fixture.
+
+    Lengthening the loading hour is enough to make the window unambiguously the
+    binding clock, which is what this test does.
+    """
+    monkeypatch.setattr(hos, "PICKUP_HOURS", 5.0)
+    sim = simulate(build((60, 1.0), (900, 15.0)))
+
+    rests = kinds(sim, StopKind.REST)
+    assert rests, "expected the window to force a rest"
+    first_rest = rests[0]
+
+    # 06:00 start + 1 h driving + 5 h loading + 8 h driving = 14 h exactly.
+    assert first_rest.start - START == timedelta(hours=LIMIT_DUTY_WINDOW)
+
+    driven_first_shift = sum(
+        s.hours
+        for s in sim.segments[: sim.segments.index(first_rest)]
+        if s.duty is Duty.DRIVING
+    )
+    assert driven_first_shift == pytest.approx(9.0)
+    assert driven_first_shift < LIMIT_DRIVE_PER_SHIFT, (
+        "the window, not the 11-hour driving limit, should have stopped the driver"
+    )
+
+    assert_compliant(sim)
+    assert_sheets_well_formed(sim)
+
+
+def test_window_is_not_reset_by_a_short_break(monkeypatch):
+    """Only 10+ consecutive hours off resets the window; a 30-minute break does not."""
+    monkeypatch.setattr(hos, "PICKUP_HOURS", 3.0)
+    sim = simulate(build((60, 1.0), (900, 15.0)))
+
+    first_rest = kinds(sim, StopKind.REST)[0]
+    index = sim.segments.index(first_rest)
+
+    # A break is taken inside this shift, and the shift still ends at 14 hours.
+    assert any(s.kind is StopKind.BREAK for s in sim.segments[:index])
+    span = (first_rest.start - START).total_seconds() / 3600.0
+    assert span == pytest.approx(LIMIT_DUTY_WINDOW)
+
+    assert_compliant(sim)
+
+
+def test_no_shift_ever_exceeds_fourteen_hours_of_clock_time():
+    """Walk every fixture and re-derive shift spans from wall-clock times."""
+    for name, trip in sorted(FIXTURES.items()):
+        sim = simulate(trip)
+        shift_started = None
+        for seg in sim.segments:
+            is_reset = seg.duty in (Duty.OFF, Duty.SB) and seg.hours >= MIN_DAILY_RESET - TOL
+            if is_reset:
+                shift_started = None
+                continue
+            if shift_started is None:
+                shift_started = seg.start
+            if seg.duty is Duty.DRIVING:
+                span = (seg.end - shift_started).total_seconds() / 3600.0
+                assert span <= LIMIT_DUTY_WINDOW + TOL, (
+                    f"{name}: drove {span:.2f} h into the shift, past the 14-hour window"
+                )
+
+
+def test_ten_hour_rest_clears_the_break_clock(monkeypatch):
+    """After a full rest the driver gets a fresh 8 hours before the next break.
+
+    Carrying a stale break clock across a rest is *legal* -- it only ever
+    inserts breaks earlier than required -- so the upper-bound checker above
+    cannot see it. It still stretches the trip and puts the break in the wrong
+    place on the log sheet, so it is asserted explicitly here.
+
+    Fuelling is pushed out of range so this isolates the break rule; a fuel
+    stop would otherwise discharge the break clock on its own.
+    """
+    monkeypatch.setattr(hos, "FUEL_INTERVAL_MILES", 100_000.0)
+    sim = simulate(build((600, 10.0), (900, 15.0)))
+
+    rest = kinds(sim, StopKind.REST)[0]
+    driven_since_rest = 0.0
+
+    for seg in sim.segments[sim.segments.index(rest) + 1 :]:
+        if seg.duty is Duty.DRIVING:
+            driven_since_rest += seg.hours
+        elif seg.kind is StopKind.BREAK:
+            assert driven_since_rest == pytest.approx(LIMIT_DRIVE_BEFORE_BREAK), (
+                f"break came after {driven_since_rest:.2f} h of post-rest driving, "
+                f"expected a full {LIMIT_DRIVE_BEFORE_BREAK:.0f} h"
+            )
+            return
+
+    pytest.fail("expected a 30-minute break in the shift after the rest")

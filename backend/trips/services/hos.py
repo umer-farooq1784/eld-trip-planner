@@ -312,20 +312,24 @@ class HosSimulator:
             self.drive_in_shift += hours
             self.drive_since_break += hours
             self.miles_since_fuel += miles
-        elif hours >= REQUIRED_BREAK - EPS:
-            # Any non-driving block of at least 30 consecutive minutes
-            # satisfies the break requirement, whether it is taken on duty,
-            # off duty or in the sleeper berth. A fuel stop or a loading hour
-            # therefore discharges it, and no separate break is owed.
-            # [Guide p.10]
-            self.drive_since_break = 0.0
 
         if resets_shift:
+            # Ten or more consecutive hours off duty clears every shift-level
+            # clock at once. [Guide p.6]
             self.drive_in_shift = 0.0
             self.window_used = 0.0
             self.drive_since_break = 0.0
         else:
+            # The window is consecutive clock time, so everything that is not
+            # a qualifying rest burns it -- breaks and fuel stops included.
             self.window_used += hours
+            if duty is not Duty.DRIVING and hours >= REQUIRED_BREAK - EPS:
+                # Any non-driving block of at least 30 consecutive minutes
+                # satisfies the break requirement, whether it is taken on
+                # duty, off duty or in the sleeper berth. A fuel stop or a
+                # loading hour therefore discharges it, and no separate break
+                # is owed. [Guide p.10]
+                self.drive_since_break = 0.0
 
     # -- the interventions -------------------------------------------------
 
