@@ -1,0 +1,90 @@
+@import "tailwindcss";
+
+/* Palette borrowed from the source documents themselves: FMCSA navy, the
+   safety amber of highway signage, and a cool paper ground. */
+@theme {
+  --color-ground: #f3f5f9;
+  --color-surface: #ffffff;
+  --color-sunken: #eaeef4;
+  --color-ink: #0f1b33;
+  --color-ink-mid: #47536e;
+  --color-ink-mute: #6e7a96;
+  --color-rule: #d8dde6;
+  --color-rule-soft: #e7ebf1;
+
+  --color-accent: #b0771a;
+  --color-accent-bright: #efb02a;
+  --color-accent-wash: #fdf4e0;
+
+  --color-good: #2c6a50;
+  --color-good-wash: #e6f0ea;
+  --color-warn: #9e4023;
+  --color-warn-wash: #faeae4;
+
+  /* Duty statuses, used consistently on the grid, legend and itinerary. */
+  --color-duty-off: #6e7a96;
+  --color-duty-sb: #5b54a8;
+  --color-duty-d: #b0771a;
+  --color-duty-on: #2c6a50;
+
+  --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-sans: "Public Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    background: var(--color-ground);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+  ::selection {
+    background: var(--color-accent-bright);
+    color: var(--color-ink);
+  }
+}
+
+@layer utilities {
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Leaflet ships its own stylesheet expectations; keep the canvas neutral. */
+.leaflet-container {
+  background: var(--color-sunken);
+  font-family: var(--font-sans);
+}
+.leaflet-bar a {
+  color: var(--color-ink) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media print {
+  @page {
+    size: landscape;
+    margin: 10mm;
+  }
+  body {
+    background: #ffffff;
+  }
+  .break-after-page {
+    break-after: page;
+  }
+}
