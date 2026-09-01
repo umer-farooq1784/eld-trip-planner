@@ -2,6 +2,14 @@ import type { Place, TripPlan, TripSummaryRow } from "./types";
 
 const BASE = import.meta.env.VITE_API_BASE_URL ?? "";
 
+function describeStatus(status: number): string {
+  if (status === 404) return "That trip could not be found. It may have been removed.";
+  if (status === 429) return "Too many requests just now. Wait a moment and try again.";
+  if (status >= 500)
+    return "The planning service is temporarily unavailable. Please try again in a moment.";
+  return "That request could not be completed. Check the details and try again.";
+}
+
 export class ApiError extends Error {
   readonly fields?: Record<string, unknown>;
   constructor(message: string, fields?: Record<string, unknown>) {
@@ -26,10 +34,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     const body = await response.json().catch(() => null);
-    throw new ApiError(
-      body?.error ?? `Request failed (${response.status}).`,
-      body?.fields,
-    );
+    throw new ApiError(body?.error ?? describeStatus(response.status), body?.fields);
   }
   return response.json() as Promise<T>;
 }

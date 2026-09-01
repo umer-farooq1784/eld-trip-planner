@@ -78,7 +78,7 @@ export default function App() {
         </div>
       </header>
 
-      <main className="mx-auto grid max-w-[1400px] gap-5 px-5 py-5 lg:grid-cols-[340px_minmax(0,1fr)]">
+      <main className="mx-auto grid max-w-[1400px] grid-cols-[minmax(0,1fr)] gap-5 px-5 py-5 lg:grid-cols-[340px_minmax(0,1fr)]">
         <aside className="print:hidden lg:sticky lg:top-5 lg:self-start">
           <div className="rounded-lg border border-rule bg-surface shadow-sm">
             <div className="p-4">
@@ -87,12 +87,14 @@ export default function App() {
             <CarrierPanel value={carrier} onChange={updateCarrier} />
             <div className="border-t border-rule">
               <h2 className="px-4 pt-3 text-xs font-semibold text-ink">Recent trips</h2>
-              <TripHistory trips={history} activeId={plan?.id ?? null} onOpen={open} />
+              <div className="max-h-72 overflow-y-auto">
+                <TripHistory trips={history} activeId={plan?.id ?? null} onOpen={open} />
+              </div>
             </div>
           </div>
         </aside>
 
-        <div className="space-y-5">
+        <div className="min-w-0 space-y-5">
           {error && (
             <div role="alert"
               className="rounded-lg border border-warn/30 bg-warn-wash px-4 py-3 text-sm text-warn print:hidden">
@@ -107,7 +109,7 @@ export default function App() {
           {plan && (
             <>
               <SummaryBar plan={plan} />
-              <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px] print:hidden">
+              <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5 xl:grid-cols-[minmax(0,1fr)_360px] print:hidden">
                 <RouteMap plan={plan} />
                 <section className="rounded-lg border border-rule bg-surface shadow-sm">
                   <h2 className="border-b border-rule px-4 py-3 font-display text-base font-semibold text-ink">
@@ -118,7 +120,7 @@ export default function App() {
                   </div>
                 </section>
               </div>
-              <LogSheets plan={plan} carrier={carrier} />
+              <LogSheets key={plan.id ?? plan.summary.start_at} plan={plan} carrier={carrier} />
             </>
           )}
         </div>
