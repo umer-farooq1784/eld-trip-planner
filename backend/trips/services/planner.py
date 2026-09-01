@@ -40,10 +40,18 @@ class PlaceInput:
     def resolve(self, provider: Provider) -> Place:
         if self.lat is not None and self.lon is not None:
             return Place(label=self.query, lat=self.lat, lon=self.lon)
+
         matches = provider.geocode(self.query, limit=1)
         if not matches:
             raise RoutingError(f"Could not find a location matching '{self.query}'.")
-        return matches[0]
+
+        place = matches[0]
+        if not place.exact:
+            raise RoutingError(
+                f"'{self.query}' did not match a specific place - the closest was "
+                f"'{place.label}'. Pick a suggestion from the list, or include the state."
+            )
+        return place
 
 
 class _Locator:

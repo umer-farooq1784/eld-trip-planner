@@ -35,6 +35,7 @@ logger = logging.getLogger(__name__)
 
 METERS_PER_MILE = 1609.344
 NOMINATIM_URL = "https://nominatim.openstreetmap.org"
+GEOCODE_LAYERS = "address,locality,localadmin,borough,county,region,postalcode"
 USER_AGENT = "eld-trip-planner/1.0 (HOS compliance demo)"
 
 
@@ -141,12 +142,23 @@ class OpenRouteServiceProvider:
         lon, lat = feature["geometry"]["coordinates"][:2]
         city = props.get("locality") or props.get("localadmin") or props.get("county")
         label = format_place(city, props.get("region_a") or props.get("region"))
-        return Place(label=label or props.get("label", "Unknown"), lat=lat, lon=lon)
+        return Place(
+            label=label or props.get("label", "Unknown"),
+            lat=lat,
+            lon=lon,
+            exact=props.get("match_type") != "fallback",
+        )
 
     def geocode(self, query: str, limit: int = 5) -> list[Place]:
         data = self._get(
             f"{self.geocode_url}/search",
-            {"text": query, "size": limit, "boundary.country": "USA"},
+            {
+                "text": query,
+                "size": limit,
+                "boundary.country": "USA",
+                # Without this a query of pure noise matches a street name.
+                "layers": GEOCODE_LAYERS,
+            },
         )
         return [self._place_from_feature(f) for f in data.get("features", [])]
 

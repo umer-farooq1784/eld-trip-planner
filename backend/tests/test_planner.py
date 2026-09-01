@@ -8,7 +8,9 @@ import pytest
 
 from trips.models import Trip
 from trips.serializers import payload_from_trip
+from trips.services.geo import Place
 from trips.services.planner import PlaceInput, _Locator, plan_trip
+from trips.services.routing import RoutingError
 
 START = datetime(2026, 9, 1, 6, 0)
 
@@ -202,3 +204,31 @@ def test_fresh_plans_carry_stop_coordinates(api):
     assert [(s["lat"], s["lon"]) for s in fetched["stops"]] == [
         (s["lat"], s["lon"]) for s in created["stops"]
     ]
+
+
+def test_a_vague_query_is_rejected_rather_than_guessed(stub_provider, monkeypatch):
+    """A noisy query must not silently become a real place.
+
+    Pelias answers "zzzzqqqxxx not a place" with a street in Florida at full
+    confidence, so match_type is the only usable signal.
+    """
+    monkeypatch.setattr(
+        stub_provider, "geocode",
+        lambda query, limit=5: [Place("Merritt Island, FL", 28.38, -80.70, exact=False)],
+    )
+    with pytest.raises(RoutingError, match="did not match a specific place"):
+        PlaceInput("zzzzqqqxxx not a place").resolve(stub_provider)
+
+
+def test_an_exact_match_resolves_normally(stub_provider, monkeypatch):
+    monkeypatch.setattr(
+        stub_provider, "geocode",
+        lambda query, limit=5: [Place("Dallas, TX", 32.77, -96.79, exact=True)],
+    )
+    assert PlaceInput("Dallas, TX").resolve(stub_provider).label == "Dallas, TX"
+
+
+def test_explicit_coordinates_skip_geocoding_entirely(stub_provider):
+    place = PlaceInput("Anywhere", 10.0, 20.0).resolve(stub_provider)
+    assert (place.lat, place.lon) == (10.0, 20.0)
+    assert stub_provider.geocode_calls == 0

@@ -54,6 +54,8 @@ class Place:
     label: str
     lat: float
     lon: float
+    #: False when the geocoder degraded to a broader or unrelated match.
+    exact: bool = True
 
     def as_dict(self) -> dict:
         return {"label": self.label, "lat": self.lat, "lon": self.lon}
