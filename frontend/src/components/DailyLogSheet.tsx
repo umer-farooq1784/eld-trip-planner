@@ -27,7 +27,7 @@ const FAINT = "#9aa2b1";
 /** Baseline the rotated location captions read up from. */
 const REMARK_BASELINE = SHEET.remarksTop + SHEET.remarksHeight - 26;
 
-/** A ruled blank the driver would have written on, with a caption beneath. */
+/** A ruled blank with a caption beneath. */
 function Field({
   x, y, width, label, value, size = 10,
 }: {
@@ -160,8 +160,6 @@ export const DailyLogSheet = forwardRef<SVGSVGElement, Props>(function DailyLogS
       {/* ---------- the graph grid ---------- */}
       <rect x={SHEET.gridLeft} y={SHEET.bandTop} width={GRID_WIDTH} height={SHEET.bandHeight} fill={INK} />
       {HOUR_LABELS.map((label, hour) => {
-        // The first and last captions sit on the grid edge; centring them
-        // would hang half the word outside the black band.
         const isFirst = hour === 0;
         const isLast = hour === 24;
         return (
@@ -236,9 +234,7 @@ export const DailyLogSheet = forwardRef<SVGSVGElement, Props>(function DailyLogS
 
       {remarkLabels.map((label, index) => (
         <g key={`rm-${index}`}>
-          {/* Leader from the true duty change to the caption, which may have
-              been nudged sideways to keep two towns from printing on top of
-              each other. */}
+          {/* Leader from the duty change to a caption that may be nudged. */}
           <line
             x1={label.tickX} y1={GRID_BOTTOM}
             x2={label.labelX} y2={SHEET.remarksTop + 6}

@@ -116,8 +116,7 @@ class OpenRouteServiceProvider:
 
     @property
     def _auth_headers(self) -> dict:
-        # HeiGIT accepts the key as a bearer-style Authorization header on every
-        # service. Keys issued since the 2025 migration are JWTs.
+        # HeiGIT keys are JWTs, passed as an Authorization header.
         return {
             "Authorization": self.api_key,
             "Accept": "application/json",
@@ -163,9 +162,8 @@ class OpenRouteServiceProvider:
     def route(self, waypoints: list[Place]) -> Route:
         response = requests.post(
             f"{self.base_url}/v2/directions/{self.profile}/geojson",
-            # `instructions: false` makes the API omit `segments` entirely, and
-            # segments are the only source of per-leg distance. Units are left
-            # at the default (metres) and converted here.
+            # `instructions: false` omits `segments`, the only per-leg
+            # distance source. Units stay metric and convert below.
             json={"coordinates": [[p.lon, p.lat] for p in waypoints]},
             headers={
                 **self._auth_headers,

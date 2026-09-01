@@ -61,13 +61,8 @@ export interface RemarkLabel {
 /**
  * Lay out the location captions written under the grid. [Guide p.17]
  *
- * Two rules, both taken from how the form is filled in by hand:
- *
- * 1. A place is written once. A fuel stop produces three duty changes
- *    (driving, on duty, driving) at one location, and writing the town three
- *    times just prints it on top of itself.
- * 2. Where captions would still collide, the text slides right and a leader
- *    line ties it back to the true tick, rather than letting them overlap.
+ * A place is written once, as on a hand-filled form, and captions that would
+ * still collide slide right with a leader line back to the true tick.
  */
 export function layOutRemarks(
   remarks: { minute: number; location: string }[],

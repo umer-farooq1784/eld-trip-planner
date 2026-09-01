@@ -1,13 +1,8 @@
 """Contract tests for parsing openrouteservice responses.
 
-Recorded from live api.heigit.org replies. Every assertion here corresponds to
-something that was actually wrong at some point:
-
-* `instructions: false` makes the API omit `segments`, which is the only
-  source of per-leg distance. The provider used to index it blindly.
-* Passing `units: "mi"` returns miles, which were then divided by
-  metres-per-mile a second time.
-* The `/geojson` endpoint answers 406 to `Accept: application/json`.
+Fixtures are recorded from live api.heigit.org replies. Three behaviours the
+parser depends on: `instructions: false` omits `segments`, `units: "mi"`
+changes the distance unit, and `/geojson` answers 406 to `application/json`.
 """
 
 from __future__ import annotations
@@ -68,7 +63,7 @@ def test_parses_two_legs_with_metres_converted_to_miles():
 
 
 def test_duration_comes_from_planning_speed_not_the_provider():
-    """driving-hgv predicts about 40 mph, which would inflate every log."""
+    """driving-hgv predicts about 40 mph, well below interstate speed."""
     route = provider(speed=55.0)._parse_route(LIVE_RESPONSE, WAYPOINTS)
     first = route.legs[0]
 
@@ -97,7 +92,7 @@ def test_geometry_is_split_at_the_waypoints():
 
 
 def test_missing_segments_raises_a_readable_error():
-    """This is the shape the API returns when `instructions` is false."""
+    """The shape the API returns when `instructions` is false."""
     stripped = {
         "features": [
             {

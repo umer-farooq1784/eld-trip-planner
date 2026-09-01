@@ -1,8 +1,7 @@
 """Persistence for planned trips.
 
-Segments and remarks are stored as JSON on the daily log: they are a rendering
-payload consumed whole by the log sheet, never queried field by field. Stops
-get their own table because the map and the itinerary do filter them by kind.
+Segments and remarks are stored as JSON: they are a rendering payload
+consumed whole. Stops get a table because the map filters them by kind.
 """
 
 from __future__ import annotations
@@ -116,10 +115,7 @@ class DailyLog(models.Model):
 class PlaceCache(models.Model):
     """Reverse-geocode results, keyed by a coarse lat/lon grid.
 
-    Remarks need a city and state at every duty change, which on a long trip
-    means a dozen or more reverse lookups. Snapping to a ~3.5 mile grid means
-    stops in the same town resolve once, which keeps the request fast and
-    stays well inside the provider's rate limit.
+    Snapping to a ~3.5 mile grid means stops in the same town resolve once.
     """
 
     grid_key = models.CharField(max_length=32, unique=True)

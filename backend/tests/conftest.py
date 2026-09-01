@@ -11,9 +11,7 @@ from trips.services.routing import Route, RoutedLeg
 class StubProvider:
     """Deterministic routing with straight two-point geometry per leg.
 
-    Road distance is whatever the test says it is, deliberately unrelated to
-    the great-circle length of the geometry, which is exactly the mismatch the
-    locator has to cope with.
+    Road distance is unrelated to the great-circle length of the geometry.
     """
 
     is_estimated = False

@@ -1,8 +1,4 @@
-/**
- * Header details the simulation cannot know. Editable in the UI and kept in
- * localStorage, because a log sheet with blank carrier fields is not a valid
- * record of duty status. [Guide p.15]
- */
+/** Header details the simulation cannot know. [Guide p.15] */
 
 export interface CarrierDetails {
   carrier: string;

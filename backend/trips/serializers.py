@@ -22,11 +22,7 @@ class PlaceInputSerializer(serializers.Serializer):
 
 
 class PlanTripSerializer(serializers.Serializer):
-    """The four inputs from the brief, plus an optional start time.
-
-    The brief does not list a start time, but a log sheet has to be dated, so
-    it is accepted and defaults to now.
-    """
+    """The four inputs from the brief, plus a start time defaulting to now."""
 
     current = PlaceInputSerializer()
     pickup = PlaceInputSerializer()
@@ -61,11 +57,7 @@ class TripListSerializer(serializers.ModelSerializer):
 
 
 def payload_from_trip(trip: Trip) -> dict:
-    """Rebuild the plan response from the relational tables.
-
-    Deliberately not a cached blob: if the models cannot reproduce the
-    response, the models are wrong.
-    """
+    """Rebuild the plan response from the relational tables."""
     stops = list(trip.stops.all())
     days = list(trip.daily_logs.all())
 

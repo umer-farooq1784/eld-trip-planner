@@ -1,8 +1,6 @@
 /**
- * Rasterise a log sheet to PNG.
- *
- * The sheet is styled with CSS custom properties for fonts, which do not
- * survive serialisation, so the export re-declares them inside the SVG.
+ * Rasterise a log sheet to PNG. Font custom properties do not survive
+ * serialisation, so they are re-declared inside the SVG.
  */
 
 const FONT_DECLARATIONS = `

@@ -1,8 +1,4 @@
-/**
- * Development harness: renders every log sheet for one trip at full width,
- * with no app chrome, so the drawing can be checked against the DOT form.
- * Not part of the production bundle unless explicitly built.
- */
+/** Dev harness: every log sheet for one trip, full width, no app chrome. */
 import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";

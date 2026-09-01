@@ -1,8 +1,7 @@
 """Accuracy tests for the Hours-of-Service engine.
 
-Test 8 is the important one: it re-derives compliance from the emitted
-timeline with a checker written independently of the engine, so a bug in the
-engine's own bookkeeping cannot hide behind itself.
+Test 8 re-derives compliance from the emitted timeline using a checker
+written independently of the engine.
 """
 
 from __future__ import annotations
@@ -25,13 +24,8 @@ from trips.services.hos import (
 TOL = 1e-6
 START = datetime(2026, 9, 1, 6, 0)
 
-# The legal limits, written out as literals on purpose.
-#
-# The checker below must NOT import these from the module it is checking. If it
-# did, a mutation that loosened a limit in the engine would loosen the
-# assertion along with it, and the test would keep passing while the app
-# started producing illegal logs. (Verified: raising MAX_DRIVE_PER_SHIFT to 12
-# used to leave all tests green.)
+# Literals on purpose: importing these from the module under test would let
+# a loosened limit loosen the assertion with it.
 LIMIT_DRIVE_PER_SHIFT = 11.0    # 395.3(a)(3)
 LIMIT_DUTY_WINDOW = 14.0        # 395.3(a)(2)
 LIMIT_DRIVE_BEFORE_BREAK = 8.0  # 395.3(a)(3)(ii)
@@ -347,14 +341,9 @@ def test_rejects_wrong_number_of_legs():
 def test_14_hour_window_binds_before_the_driving_limit(monkeypatch):
     """The 14-hour window is consecutive clock time, not driving time.
 
-    Under the brief's own assumptions this clock never strictly binds: the most
-    non-driving time one shift can accumulate is exactly three hours (1 h
-    pickup, 1 h dropoff, a 30-minute break, a 30-minute fuel stop), so 11 hours
-    of driving always reaches its wall first or at the very same instant. A
-    broken window rule would therefore sail through every realistic fixture.
-
-    Lengthening the loading hour is enough to make the window unambiguously the
-    binding clock, which is what this test does.
+    Under the brief's assumptions a shift accumulates at most three hours of
+    non-driving time, so the 11-hour limit always binds first. Loading is
+    lengthened here to make the window the binding clock.
     """
     monkeypatch.setattr(hos, "PICKUP_HOURS", 5.0)
     sim = simulate(build((60, 1.0), (900, 15.0)))
@@ -418,13 +407,8 @@ def test_no_shift_ever_exceeds_fourteen_hours_of_clock_time():
 def test_ten_hour_rest_clears_the_break_clock(monkeypatch):
     """After a full rest the driver gets a fresh 8 hours before the next break.
 
-    Carrying a stale break clock across a rest is *legal* -- it only ever
-    inserts breaks earlier than required -- so the upper-bound checker above
-    cannot see it. It still stretches the trip and puts the break in the wrong
-    place on the log sheet, so it is asserted explicitly here.
-
-    Fuelling is pushed out of range so this isolates the break rule; a fuel
-    stop would otherwise discharge the break clock on its own.
+    A stale break clock is legal but inserts breaks early, so the upper-bound
+    checker cannot see it. Fuelling is pushed out of range to isolate the rule.
     """
     monkeypatch.setattr(hos, "FUEL_INTERVAL_MILES", 100_000.0)
     sim = simulate(build((600, 10.0), (900, 15.0)))

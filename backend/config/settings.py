@@ -70,9 +70,7 @@ TEMPLATES = [
     },
 ]
 
-# Serverless functions freeze between invocations, so a long-lived connection
-# is a liability rather than an optimisation: Neon's pooled endpoint does the
-# reuse for us. Persistent hosts can raise this via DB_CONN_MAX_AGE.
+# Serverless freezes between invocations; Neon's pooler handles reuse.
 DATABASES = {
     "default": dj_database_url.config(
         default=os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'db.sqlite3'}"),
@@ -108,8 +106,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # --- production hardening ---------------------------------------------------
 if not DEBUG:
-    # Both Vercel and Render terminate TLS upstream, so the redirect decision
-    # has to come from the forwarded header rather than the socket.
+    # TLS terminates upstream on both hosts.
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SECURE_SSL_REDIRECT = env_bool("DJANGO_SECURE_SSL_REDIRECT", True)
     SESSION_COOKIE_SECURE = True
@@ -117,10 +114,7 @@ if not DEBUG:
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = "DENY"
 
-    # Off by default on purpose. On a shared host like *.vercel.app an HSTS
-    # header with includeSubDomains would be imposed on domains that are not
-    # ours, and the platform already sends its own. Set this once the app has
-    # a custom domain.
+    # Off by default: *.vercel.app is shared and sends its own.
     SECURE_HSTS_SECONDS = int(os.getenv("DJANGO_HSTS_SECONDS", "0"))
     if SECURE_HSTS_SECONDS:
         SECURE_HSTS_INCLUDE_SUBDOMAINS = True
@@ -150,8 +144,6 @@ ORS_GEOCODE_URL = os.getenv("ORS_GEOCODE_URL", "https://api.heigit.org/pelias/v1
 ORS_PROFILE = os.getenv("ORS_PROFILE", "driving-hgv")
 ORS_TIMEOUT_SECONDS = float(os.getenv("ORS_TIMEOUT_SECONDS", "25"))
 
-# openrouteservice's driving-hgv distances are truck-legal and accurate, but its
-# durations assume roughly 40 mph average, which is far below what a Class 8
-# truck actually runs on interstate. Using them would inflate every log sheet.
-# Distance comes from the provider; duration is derived from this planning speed.
+# driving-hgv distances are accurate but its durations imply about 40 mph,
+# so distance comes from the provider and duration from this speed.
 PLANNING_SPEED_MPH = float(os.getenv("PLANNING_SPEED_MPH", "55"))

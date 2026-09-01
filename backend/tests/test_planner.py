@@ -27,12 +27,10 @@ def inputs():
 
 
 def test_locator_maps_road_miles_onto_the_polyline_by_proportion(stub_provider, places):
-    """Regression: road miles are not polyline miles.
+    """Road miles are not polyline miles.
 
-    Leg one is reported as 600 road miles but its geometry spans only ~345
-    great-circle miles. Walking the polyline with raw road miles ran off the
-    end and pinned every later stop to the destination, so a fuel stop 92
-    miles short of Atlanta was labelled "Atlanta, GA".
+    Leg one reports 600 road miles over geometry spanning about 345
+    great-circle miles, so positions must be found by proportion.
     """
     route = stub_provider.route(places)
     locator = _Locator(stub_provider, route)
@@ -191,13 +189,7 @@ def test_geocode_ignores_short_queries(api, stub_provider):
 
 @pytest.mark.django_db
 def test_fresh_plans_carry_stop_coordinates(api):
-    """Regression: the map drew the route but no stop markers.
-
-    Coordinates were only computed on the persistence path, so a freshly
-    planned trip came back with lat/lon null on every stop and the pins only
-    appeared if you reloaded the trip from history -- which is not the flow
-    anyone actually uses.
-    """
+    """Every stop in a POST response carries coordinates for the map."""
     created = api.post("/api/trips/", body(), content_type="application/json").json()
 
     assert created["stops"], "expected at least a pickup and a dropoff"

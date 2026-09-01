@@ -21,18 +21,11 @@ from .routing import Provider, Route, RoutingError, get_provider
 
 logger = logging.getLogger(__name__)
 
-#: Cap on reverse-geocode lookups per plan, so one enormous trip cannot burn
-#: through the daily API quota. Beyond this, remarks fall back to mile markers.
+#: Unresolved stops fall back to mile markers, valid Remarks. [Guide p.17]
 MAX_REVERSE_LOOKUPS = 40
-
-#: Reverse geocoding is best-effort decoration on an already-correct plan, so
-#: it gets a wall-clock budget rather than being allowed to dominate the
-#: request. Anything unresolved when the budget runs out falls back to a mile
-#: marker, which is a legal Remarks entry in its own right. [Guide p.17]
 REVERSE_LOOKUP_BUDGET_SECONDS = 6.0
 
-#: Concurrent outbound lookups. Pelias allows 100/min, so this stays well
-#: inside quota while cutting a dozen sequential round trips to two or three.
+#: Pelias allows 100 requests a minute.
 LOOKUP_CONCURRENCY = 6
 
 
@@ -61,12 +54,8 @@ class _Locator:
         self.lookups = 0
         self._by_grid: dict[str, str] = {}
 
-        # Road distance and the length of the drawn polyline are not the same
-        # number: the fallback router inflates straight lines by a winding
-        # factor, and even real geometry is simplified for transport. Walking
-        # the polyline with road miles therefore runs off the end and pins
-        # every late stop to the destination. Each leg is instead indexed by
-        # its own road-mile span and positions are found by proportion.
+        # Road miles and polyline miles differ, so each leg is indexed by
+        # its own road-mile span and positions found by proportion.
         self._legs: list[tuple[float, float, list, list]] = []
         cursor = 0.0
         for leg in route.legs:
@@ -96,9 +85,8 @@ class _Locator:
     def resolve(self, mileages: list[float]) -> dict[float, str]:
         """Name every distinct place the driver stops at, in one batch.
 
-        Database work stays on this thread and only the HTTP calls fan out:
-        Django connections are thread-local, and opening one per worker just
-        to read a cache row is not worth the cleanup burden.
+        Django connections are thread-local, so database work stays on this
+        thread and only the HTTP calls fan out.
         """
         fallback = {m: f"Mile {m:,.0f}" for m in mileages}
         positions = {m: self.position(m) for m in mileages}
@@ -164,8 +152,6 @@ def plan_trip(
 ) -> dict:
     provider = provider or get_provider()
 
-    # The three inputs are independent, so resolve them together rather than
-    # paying three sequential round trips.
     with ThreadPoolExecutor(max_workers=3) as pool:
         places = list(pool.map(lambda field: field.resolve(provider), [current, pickup, dropoff]))
     route = provider.route(places)
@@ -186,9 +172,7 @@ def plan_trip(
         start_at=start_at,
     )
 
-    # Simulate first with a cheap locator, then name only the distinct places
-    # the driver actually stops at. Naming during the simulation would fire a
-    # reverse lookup for every driving chunk as well.
+    # A cheap locator first, so only distinct stops are reverse-geocoded.
     simulation = hos.simulate(trip_input, locator=lambda miles: f"@{miles:.1f}")
 
     locator = _Locator(provider, route)
@@ -289,8 +273,6 @@ def build_payload(
                 "depart_at": stop.end.isoformat(),
                 "duration_hours": round(stop.hours, 2),
                 "trip_miles": round(stop.trip_miles_at_start, 1),
-                # Without these the map draws the route but none of the stop
-                # markers, which is half of what the map is for.
                 **_coords(locator, stop.trip_miles_at_start),
             }
             for index, stop in enumerate(simulation.stops)

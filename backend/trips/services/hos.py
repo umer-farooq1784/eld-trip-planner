@@ -118,8 +118,7 @@ class Leg:
         return self.distance_miles / self.duration_hours
 
 
-#: Maps cumulative trip miles to a place name for the Remarks section.
-#: Injected so the engine stays free of geocoding concerns. [Guide p.17]
+#: Cumulative trip miles to a place name, for Remarks. [Guide p.17]
 Locator = Callable[[float], str]
 
 
@@ -314,21 +313,15 @@ class HosSimulator:
             self.miles_since_fuel += miles
 
         if resets_shift:
-            # Ten or more consecutive hours off duty clears every shift-level
-            # clock at once. [Guide p.6]
+            # 10+ consecutive hours off clears every shift clock. [Guide p.6]
             self.drive_in_shift = 0.0
             self.window_used = 0.0
             self.drive_since_break = 0.0
         else:
-            # The window is consecutive clock time, so everything that is not
-            # a qualifying rest burns it -- breaks and fuel stops included.
+            # Consecutive clock time: breaks and fuel stops burn it too.
             self.window_used += hours
             if duty is not Duty.DRIVING and hours >= REQUIRED_BREAK - EPS:
-                # Any non-driving block of at least 30 consecutive minutes
-                # satisfies the break requirement, whether it is taken on
-                # duty, off duty or in the sleeper berth. A fuel stop or a
-                # loading hour therefore discharges it, and no separate break
-                # is owed. [Guide p.10]
+                # Any non-driving block >= 30 min satisfies it. [Guide p.10]
                 self.drive_since_break = 0.0
 
     # -- the interventions -------------------------------------------------
@@ -378,9 +371,7 @@ class HosSimulator:
 
             here = self.locator(self.trip_miles)
 
-            # The 70-hour limit bars *driving* only; other work is still
-            # permitted, so this is checked here and not before loading.
-            # [Guide p.10]
+            # The 70-hour limit bars driving only, not other work. [Guide p.10]
             if self.cycle_used >= CYCLE_LIMIT_HOURS - EPS:
                 self._take_restart(here)
                 continue
@@ -426,8 +417,7 @@ class HosSimulator:
             legs[1].destination_label,
         )
 
-        # A driver who is already at the cycle limit cannot drive at all until
-        # a 34-hour restart is taken. [Guide p.11]
+        # At the limit, no driving until a 34-hour restart. [Guide p.11]
         if self.cycle_used >= CYCLE_LIMIT_HOURS - EPS:
             self._take_restart(origin)
 
@@ -595,10 +585,8 @@ def build_daily_logs(
             if source.start.date() == day
         ]
 
-        # Column C is the rolling 8-day total the engine actually enforced.
-        # Column A drops the oldest of those eight days, but only when that day
-        # is inside the simulated trip and no restart has since cleared the
-        # window -- otherwise the two would double-count.
+        # A drops the oldest of the eight days, but only when that day is
+        # inside the trip and no restart has since cleared the window.
         hours_last_8 = cycle_at_end[index]
         oldest = index - (CYCLE_WINDOW_DAYS - 1)
         if oldest >= 0 and last_restart_index < oldest:
