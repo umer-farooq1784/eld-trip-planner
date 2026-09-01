@@ -27,7 +27,6 @@ const FAINT = "#9aa2b1";
 /** Baseline the rotated location captions read up from. */
 const REMARK_BASELINE = SHEET.remarksTop + SHEET.remarksHeight - 26;
 
-/** A ruled blank with a caption beneath. */
 function Field({
   x, y, width, label, value, size = 10,
 }: {
@@ -55,7 +54,6 @@ export const DailyLogSheet = forwardRef<SVGSVGElement, Props>(function DailyLogS
 ) {
   const [year, month, dayOfMonth] = day.date.split("-");
 
-  /** One continuous polyline: horizontal runs, vertical connectors at changes. */
   const dutyLine = useMemo(() => {
     const points: string[] = [];
     for (const segment of day.segments) {
@@ -234,7 +232,6 @@ export const DailyLogSheet = forwardRef<SVGSVGElement, Props>(function DailyLogS
 
       {remarkLabels.map((label, index) => (
         <g key={`rm-${index}`}>
-          {/* Leader from the duty change to a caption that may be nudged. */}
           <line
             x1={label.tickX} y1={GRID_BOTTOM}
             x2={label.labelX} y2={SHEET.remarksTop + 6}

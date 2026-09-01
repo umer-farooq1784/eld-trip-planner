@@ -104,7 +104,6 @@ STORAGES = {
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# --- production hardening ---------------------------------------------------
 if not DEBUG:
     # TLS terminates upstream on both hosts.
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
@@ -135,7 +134,6 @@ CORS_ALLOWED_ORIGINS = env_list(
 )
 CORS_ALLOWED_ORIGIN_REGEXES = [r"^https://.*\.vercel\.app$"]
 
-# --- Routing provider -------------------------------------------------------
 # api.openrouteservice.org was shut off on 24 Aug 2026. HeiGIT's unified API
 # splits routing and geocoding across different service prefixes.
 ORS_API_KEY = os.getenv("ORS_API_KEY", "")

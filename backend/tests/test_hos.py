@@ -55,11 +55,6 @@ def kinds(sim, kind):
     return [s for s in sim.segments if s.kind is kind]
 
 
-# ---------------------------------------------------------------------------
-# The independent compliance checker used by test 8
-# ---------------------------------------------------------------------------
-
-
 def assert_compliant(sim):
     """Replay the timeline and re-check every limit from scratch."""
     drive_in_shift = window = drive_since_break = 0.0
@@ -128,11 +123,6 @@ def assert_sheets_well_formed(sim):
     assert sum(d.miles for d in sim.days) == pytest.approx(sim.total_miles, rel=1e-6)
 
 
-# ---------------------------------------------------------------------------
-# 1-7: behavioural cases
-# ---------------------------------------------------------------------------
-
-
 def test_01_short_trip_needs_no_rest_or_break():
     sim = simulate(build((120, 2.0), (180, 3.0)))
 
@@ -141,7 +131,6 @@ def test_01_short_trip_needs_no_rest_or_break():
     assert kinds(sim, StopKind.BREAK) == []
     assert kinds(sim, StopKind.FUEL) == []
     assert sim.total_drive_hours == pytest.approx(5.0)
-    # 5 h driving + 2 h loading, starting 06:00 -> off duty again at 13:00.
     assert sim.end_at == datetime(2026, 9, 1, 13, 0)
     assert sim.days[0].totals[Duty.DRIVING] == pytest.approx(5.0)
     assert sim.days[0].totals[Duty.ON_DUTY] == pytest.approx(2.0)
@@ -149,7 +138,6 @@ def test_01_short_trip_needs_no_rest_or_break():
 
 
 def test_02_forces_exactly_one_ten_hour_reset():
-    # 13 h of driving cannot fit in one 11-hour shift.
     sim = simulate(build((240, 4.0), (540, 9.0)))
 
     rests = kinds(sim, StopKind.REST)
@@ -158,13 +146,11 @@ def test_02_forces_exactly_one_ten_hour_reset():
     assert rests[0].hours == pytest.approx(hos.DAILY_RESET)
     assert len(sim.days) == 2
 
-    # The shift clocks are clear immediately after the rest.
     after = sim.segments[sim.segments.index(rests[0]) + 1]
     assert after.duty is Duty.DRIVING
 
 
 def test_03_break_lands_at_eight_cumulative_driving_hours():
-    # One 8.5 h leg, no interruption before it, so the break is owed at 8 h.
     sim = simulate(build((480, 8.5), (60, 1.0)))
 
     breaks = kinds(sim, StopKind.BREAK)
@@ -214,7 +200,6 @@ def test_05_cycle_restart_when_seventy_hours_would_be_crossed():
     assert restarts[0].duty is Duty.OFF
     assert restarts[0].hours == pytest.approx(hos.CYCLE_RESTART)
 
-    # It is taken mid-trip, only once the 70th hour is actually reached.
     driven_before = sum(
         s.hours
         for s in sim.segments[: sim.segments.index(restarts[0])]
@@ -233,7 +218,6 @@ def test_06_driver_at_the_cycle_limit_restarts_before_driving_at_all():
 
 
 def test_07_cross_country_produces_a_stack_of_sheets():
-    # Los Angeles -> Phoenix -> New York, roughly 2,500 miles.
     sim = simulate(build((373, 5.8), (2145, 32.0), cycle=10.0))
 
     assert sim.total_miles == pytest.approx(2518.0)
@@ -243,10 +227,6 @@ def test_07_cross_country_produces_a_stack_of_sheets():
     assert len(kinds(sim, StopKind.REST)) >= 3
     assert sim.days[-1].day > sim.days[0].day
 
-
-# ---------------------------------------------------------------------------
-# 8: the property test
-# ---------------------------------------------------------------------------
 
 FIXTURES = {
     "short": build((120, 2.0), (180, 3.0)),
@@ -275,11 +255,6 @@ def test_08_invariants_hold_for_every_fixture(name):
         sum(leg.distance_miles for leg in FIXTURES[name].legs)
     )
     assert sim.segments[-1].kind is StopKind.DROPOFF
-
-
-# ---------------------------------------------------------------------------
-# 9: the recap box and remarks
-# ---------------------------------------------------------------------------
 
 
 def test_09_recap_columns_are_internally_consistent():
@@ -314,11 +289,6 @@ def test_locator_is_used_for_remark_place_names():
     assert any("Amarillo, TX" in s.location for s in sim.segments)
 
 
-# ---------------------------------------------------------------------------
-# Input validation
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.parametrize(
     "cycle,message",
     [(-1.0, "negative"), (71.0, "cannot exceed")],
@@ -331,11 +301,6 @@ def test_rejects_out_of_range_cycle_hours(cycle, message):
 def test_rejects_wrong_number_of_legs():
     with pytest.raises(HosError, match="exactly two legs"):
         TripInput(legs=[Leg("A", "B", 10, 1)], cycle_used_hours=0, start_at=START)
-
-
-# ---------------------------------------------------------------------------
-# The 14-hour window, exercised deliberately
-# ---------------------------------------------------------------------------
 
 
 def test_14_hour_window_binds_before_the_driving_limit(monkeypatch):
@@ -377,7 +342,6 @@ def test_window_is_not_reset_by_a_short_break(monkeypatch):
     first_rest = kinds(sim, StopKind.REST)[0]
     index = sim.segments.index(first_rest)
 
-    # A break is taken inside this shift, and the shift still ends at 14 hours.
     assert any(s.kind is StopKind.BREAK for s in sim.segments[:index])
     span = (first_rest.start - START).total_seconds() / 3600.0
     assert span == pytest.approx(LIMIT_DUTY_WINDOW)

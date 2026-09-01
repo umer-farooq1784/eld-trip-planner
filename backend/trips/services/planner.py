@@ -99,7 +99,6 @@ class _Locator:
         fallback = {m: f"Mile {m:,.0f}" for m in mileages}
         positions = {m: self.position(m) for m in mileages}
 
-        # Distinct grid squares, so two stops in one town cost a single lookup.
         wanted: dict[str, tuple[float, float]] = {}
         key_for_mile: dict[float, str] = {}
         for mile, position in positions.items():
@@ -209,11 +208,6 @@ def plan_trip(
         payload["id"] = str(trip.id)
         payload["created_at"] = trip.created_at.isoformat()
     return payload
-
-
-# ---------------------------------------------------------------------------
-# Serialisation
-# ---------------------------------------------------------------------------
 
 
 def _minute_of_day(moment: datetime, day) -> int:

@@ -15,7 +15,6 @@ class Trip(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
-    # --- inputs ---
     current_label = models.CharField(max_length=255)
     current_lat = models.FloatField()
     current_lon = models.FloatField()
@@ -28,7 +27,6 @@ class Trip(models.Model):
     cycle_used_hours = models.FloatField()
     start_at = models.DateTimeField()
 
-    # --- results ---
     end_at = models.DateTimeField()
     total_miles = models.FloatField()
     total_drive_hours = models.FloatField()

@@ -70,7 +70,6 @@ def test_duration_comes_from_planning_speed_not_the_provider():
     assert first.duration_hours == pytest.approx(238.8 / 55.0, abs=0.01)
     assert first.avg_speed_mph == pytest.approx(55.0, abs=0.01)
 
-    # The provider's own figure is kept so the difference stays auditable.
     assert first.provider_duration_hours == pytest.approx(21420 / 3600)
     assert first.distance_miles / first.provider_duration_hours == pytest.approx(40.1, abs=0.2)
 
@@ -87,7 +86,6 @@ def test_geometry_is_split_at_the_waypoints():
     assert route.legs[0].geometry[-1] == (29.7604, -95.3698)
     assert route.legs[1].geometry[0] == (29.7604, -95.3698)
     assert route.legs[1].geometry[-1] == (33.749, -84.388)
-    # Concatenating must not repeat the shared waypoint.
     assert len(route.geometry) == 5
 
 

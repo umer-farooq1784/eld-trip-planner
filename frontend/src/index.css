@@ -1,7 +1,5 @@
 @import "tailwindcss";
 
-/* Palette borrowed from the source documents themselves: FMCSA navy, the
-   safety amber of highway signage, and a cool paper ground. */
 @theme {
   --color-ground: #f3f5f9;
   --color-surface: #ffffff;
@@ -21,7 +19,6 @@
   --color-warn: #9e4023;
   --color-warn-wash: #faeae4;
 
-  /* Duty statuses, used consistently on the grid, legend and itinerary. */
   --color-duty-off: #6e7a96;
   --color-duty-sb: #5b54a8;
   --color-duty-d: #b0771a;
@@ -58,7 +55,6 @@
   }
 }
 
-/* Leaflet ships its own stylesheet expectations; keep the canvas neutral. */
 .leaflet-container {
   background: var(--color-sunken);
   font-family: var(--font-sans);

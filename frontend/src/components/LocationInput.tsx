@@ -24,9 +24,7 @@ export function LocationInput({ label, hint, value, place, onChange }: Props) {
       skipNextLookup.current = false;
       return;
     }
-    // Already resolved to a specific place, either by picking a suggestion or
-    // by the form filling the field itself. Looking it up again would reopen
-    // the list over a field the user is not editing.
+    // Re-querying a resolved field reopens the list over a field nobody is editing.
     if (place && place.label === value) {
       setOptions([]);
       setOpen(false);

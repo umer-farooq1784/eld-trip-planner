@@ -20,9 +20,6 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from enum import Enum
 
-# ---------------------------------------------------------------------------
-# Regulatory limits
-# ---------------------------------------------------------------------------
 
 MAX_DRIVE_PER_SHIFT = 11.0      # 395.3(a)(3)      [Guide p.6]
 MAX_DUTY_WINDOW = 14.0          # 395.3(a)(2)      [Guide p.6]
@@ -33,18 +30,12 @@ CYCLE_LIMIT_HOURS = 70.0        # 395.3(b)(2)      [Guide p.11]
 CYCLE_WINDOW_DAYS = 8
 CYCLE_RESTART = 34.0            # 395.3(c)         [Guide p.11]
 
-# ---------------------------------------------------------------------------
-# Assessment assumptions (stated in the brief, not federal rules)
-# ---------------------------------------------------------------------------
 
 FUEL_INTERVAL_MILES = 1000.0
 FUEL_STOP_HOURS = 0.5
 PICKUP_HOURS = 1.0
 DROPOFF_HOURS = 1.0
 
-# ---------------------------------------------------------------------------
-# Numerical guards
-# ---------------------------------------------------------------------------
 
 EPS = 1e-9
 MIN_DRIVE_CHUNK = 1.0 / 60.0    # never emit a sub-minute driving sliver
@@ -97,11 +88,6 @@ class StopKind(str, Enum):
     RESTART = "restart"
 
 
-# ---------------------------------------------------------------------------
-# Inputs
-# ---------------------------------------------------------------------------
-
-
 @dataclass(frozen=True)
 class Leg:
     """One routed leg of the trip, as returned by the routing provider."""
@@ -144,11 +130,6 @@ class TripInput:
         for leg in self.legs:
             if leg.distance_miles < 0 or leg.duration_hours < 0:
                 raise HosError("Leg distance and duration must be non-negative.")
-
-
-# ---------------------------------------------------------------------------
-# Outputs
-# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -235,11 +216,6 @@ class Simulation:
         return [s for s in self.segments if s.kind is not None]
 
 
-# ---------------------------------------------------------------------------
-# The engine
-# ---------------------------------------------------------------------------
-
-
 class HosSimulator:
     """Walks the trip forward in time, obeying five simultaneous clocks.
 
@@ -272,8 +248,6 @@ class HosSimulator:
         self.miles_since_fuel = 0.0
         self.trip_miles = 0.0
         self.segments: list[Segment] = []
-
-    # -- emission ----------------------------------------------------------
 
     def _emit(
         self,
@@ -324,8 +298,6 @@ class HosSimulator:
                 # Any non-driving block >= 30 min satisfies it. [Guide p.10]
                 self.drive_since_break = 0.0
 
-    # -- the interventions -------------------------------------------------
-
     def _take_break(self, location: str) -> None:
         self._emit(
             Duty.OFF, REQUIRED_BREAK, "30-minute rest break", location, kind=StopKind.BREAK
@@ -356,8 +328,6 @@ class HosSimulator:
             resets_shift=True,
         )
         self.cycle_used = 0.0
-
-    # -- driving -----------------------------------------------------------
 
     def _drive_leg(self, leg: Leg) -> None:
         remaining = leg.duration_hours
@@ -407,8 +377,6 @@ class HosSimulator:
             self._emit(Duty.DRIVING, chunk, "Driving", here, miles=chunk * speed)
             remaining -= chunk
 
-    # -- entry point -------------------------------------------------------
-
     def run(self) -> Simulation:
         legs = list(self.trip.legs)
         origin, pickup, dropoff = (
@@ -455,11 +423,6 @@ class HosSimulator:
 def simulate(trip: TripInput, locator: Locator | None = None) -> Simulation:
     """Convenience wrapper around :class:`HosSimulator`."""
     return HosSimulator(trip, locator).run()
-
-
-# ---------------------------------------------------------------------------
-# Timeline -> log sheets
-# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -540,7 +503,6 @@ def build_daily_logs(
     by_day = _clip_to_days(segments)
     ordered_days = sorted(by_day)
 
-    # Pass 1: per-day duty totals and mileage.
     on_duty_by_day: list[float] = []
     for day in ordered_days:
         pieces = by_day[day]
@@ -548,7 +510,6 @@ def build_daily_logs(
             sum(p.segment.hours for p in pieces if p.segment.duty in ON_DUTY_STATUSES)
         )
 
-    # Pass 2: the rolling cycle, chronologically, honouring 34-hour restarts.
     cycle_at_end: list[float] = []
     last_restart_index = -1
     running = float(cycle_hours_at_start)

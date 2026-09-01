@@ -1,4 +1,4 @@
-/** Geometry for the DOT log sheet. One place to change if the form moves. */
+/** Geometry for the DOT log sheet. */
 
 export const SHEET = {
   width: 1000,
@@ -21,14 +21,12 @@ export const HOUR_WIDTH = GRID_WIDTH / 24;
 export const ROWS_TOP = SHEET.bandTop + SHEET.bandHeight;
 export const GRID_BOTTOM = ROWS_TOP + SHEET.rowHeight * 4;
 
-/** Minute of the day to an x coordinate on the grid. */
 export const xForMinute = (minute: number) =>
   SHEET.gridLeft + (Math.min(1440, Math.max(0, minute)) / 1440) * GRID_WIDTH;
 
 /** Centre line of a duty row, top to bottom: Off, Sleeper, Driving, On Duty. */
 export const yForRow = (row: number) => ROWS_TOP + row * SHEET.rowHeight + SHEET.rowHeight / 2;
 
-/** The hour captions printed in the black band. */
 export const HOUR_LABELS = Array.from({ length: 25 }, (_, hour) => {
   if (hour === 0 || hour === 24) return "Mid-night";
   if (hour === 12) return "Noon";
@@ -51,9 +49,7 @@ export const formatHours = (value: number) => {
 const REMARK_MIN_GAP = 9.5;
 
 export interface RemarkLabel {
-  /** Where the duty change actually happened, on the grid. */
   tickX: number;
-  /** Where the text is drawn, nudged right if a neighbour was too close. */
   labelX: number;
   text: string;
 }

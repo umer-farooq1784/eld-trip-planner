@@ -50,7 +50,7 @@ class RoutedLeg:
     distance_miles: float
     duration_hours: float
     geometry: list[tuple[float, float]] = field(default_factory=list)
-    #: What the routing provider itself predicted, kept for comparison.
+    #: What the provider itself predicted.
     provider_duration_hours: float | None = None
 
     @property
@@ -89,11 +89,6 @@ class Provider(Protocol):
     def geocode(self, query: str, limit: int = 5) -> list[Place]: ...
     def reverse(self, lat: float, lon: float) -> str: ...
     def route(self, waypoints: list[Place]) -> Route: ...
-
-
-# ---------------------------------------------------------------------------
-# OpenRouteService
-# ---------------------------------------------------------------------------
 
 
 class OpenRouteServiceProvider:
@@ -243,11 +238,6 @@ def _describe_ors_error(response: requests.Response) -> str:
     if not message:
         return f"The routing service returned HTTP {response.status_code}."
     return message
-
-
-# ---------------------------------------------------------------------------
-# Keyless fallback
-# ---------------------------------------------------------------------------
 
 
 class FallbackProvider:

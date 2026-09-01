@@ -23,11 +23,6 @@ def inputs():
     }
 
 
-# ---------------------------------------------------------------------------
-# Placing stops on the map
-# ---------------------------------------------------------------------------
-
-
 def test_locator_maps_road_miles_onto_the_polyline_by_proportion(stub_provider, places):
     """Road miles are not polyline miles.
 
@@ -38,10 +33,8 @@ def test_locator_maps_road_miles_onto_the_polyline_by_proportion(stub_provider, 
     locator = _Locator(stub_provider, route)
 
     assert locator.position(0.0) == pytest.approx((0.0, 0.0))
-    # Halfway along leg one by road miles is halfway along its geometry.
     assert locator.position(300.0) == pytest.approx((0.0, 2.5))
     assert locator.position(600.0) == pytest.approx((0.0, 5.0))
-    # Two thirds along leg two.
     assert locator.position(600.0 + 600.0) == pytest.approx((0.0, 5.0 + 10 / 3), abs=1e-6)
     assert locator.position(1500.0) == pytest.approx((0.0, 10.0))
 
@@ -60,11 +53,6 @@ def test_reverse_lookups_are_cached_across_nearby_stops(stub_provider):
     stub_provider.reverse_calls = 0
     plan_trip(**inputs(), cycle_used_hours=0.0, start_at=START, provider=stub_provider)
     assert stub_provider.reverse_calls == 0, "second identical plan should hit the place cache"
-
-
-# ---------------------------------------------------------------------------
-# Persistence
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -87,11 +75,6 @@ def test_every_stored_sheet_still_totals_twenty_four_hours(stub_provider):
     trip = Trip.objects.get(pk=planned["id"])
     for log in trip.daily_logs.all():
         assert log.total_hours == pytest.approx(24.0, abs=1e-6)
-
-
-# ---------------------------------------------------------------------------
-# API
-# ---------------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -199,7 +182,6 @@ def test_fresh_plans_carry_stop_coordinates(api):
         assert stop["lat"] is not None, f"{stop['kind']} stop has no latitude"
         assert stop["lon"] is not None, f"{stop['kind']} stop has no longitude"
 
-    # And the stored copy must agree with what was just returned.
     fetched = api.get(f"/api/trips/{created['id']}/").json()
     assert [(s["lat"], s["lon"]) for s in fetched["stops"]] == [
         (s["lat"], s["lon"]) for s in created["stops"]
