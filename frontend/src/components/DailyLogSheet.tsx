@@ -10,6 +10,7 @@ import {
   ROW_LABELS,
   SHEET,
   formatHours,
+  layOutRemarks,
   xForMinute,
   yForRow,
 } from "../lib/logSheet";
@@ -22,6 +23,9 @@ interface Props {
 
 const INK = "#111111";
 const FAINT = "#9aa2b1";
+
+/** Baseline the rotated location captions read up from. */
+const REMARK_BASELINE = SHEET.remarksTop + SHEET.remarksHeight - 26;
 
 /** A ruled blank the driver would have written on, with a caption beneath. */
 function Field({
@@ -61,6 +65,8 @@ export const DailyLogSheet = forwardRef<SVGSVGElement, Props>(function DailyLogS
     }
     return points.join(" ");
   }, [day.segments]);
+
+  const remarkLabels = useMemo(() => layOutRemarks(day.remarks), [day.remarks]);
 
   const ticks = useMemo(() => {
     const marks: { x: number; row: number; tall: boolean }[] = [];
@@ -124,49 +130,55 @@ export const DailyLogSheet = forwardRef<SVGSVGElement, Props>(function DailyLogS
       <Field x={464} y={92} width={330} label="" value={day.segments.at(-1)?.location ?? ""} />
 
       {/* ---------- mileage + carrier ---------- */}
-      <rect x={SHEET.pad} y={116} width={152} height={38} fill="none" stroke={INK} strokeWidth={0.9} />
-      <text x={SHEET.pad + 76} y={142} fontSize={15} fill={INK} textAnchor="middle"
+      <rect x={SHEET.pad} y={112} width={152} height={34} fill="none" stroke={INK} strokeWidth={0.9} />
+      <text x={SHEET.pad + 76} y={135} fontSize={15} fill={INK} textAnchor="middle"
         fontFamily="var(--font-mono)" fontWeight={500}>
         {Math.round(day.miles).toLocaleString()}
       </text>
-      <text x={SHEET.pad + 76} y={165} fontSize={7} fill={FAINT} textAnchor="middle">
+      <text x={SHEET.pad + 76} y={156} fontSize={7} fill={FAINT} textAnchor="middle">
         Total Miles Driving Today
       </text>
 
-      <rect x={190} y={116} width={152} height={38} fill="none" stroke={INK} strokeWidth={0.9} />
-      <text x={266} y={142} fontSize={15} fill={INK} textAnchor="middle"
+      <rect x={190} y={112} width={152} height={34} fill="none" stroke={INK} strokeWidth={0.9} />
+      <text x={266} y={135} fontSize={15} fill={INK} textAnchor="middle"
         fontFamily="var(--font-mono)" fontWeight={500}>
         {totalMilesToDate != null ? Math.round(totalMilesToDate).toLocaleString() : "—"}
       </text>
-      <text x={266} y={165} fontSize={7} fill={FAINT} textAnchor="middle">Total Mileage Today</text>
+      <text x={266} y={156} fontSize={7} fill={FAINT} textAnchor="middle">Total Mileage Today</text>
 
-      <Field x={392} y={134} width={402} label="Name of Carrier or Carriers" value={carrier.carrier} />
-      <Field x={392} y={168} width={402} label="Main Office Address" value={carrier.office} />
+      <Field x={392} y={128} width={402} label="Name of Carrier or Carriers" value={carrier.carrier} />
+      <Field x={392} y={162} width={402} label="Main Office Address" value={carrier.office} />
 
-      <rect x={SHEET.pad} y={186} width={316} height={34} fill="none" stroke={INK} strokeWidth={0.9} />
-      <text x={SHEET.pad + 8} y={207} fontSize={9} fill={INK}>{carrier.truck}</text>
-      <text x={SHEET.pad + 158} y={231} fontSize={7} fill={FAINT} textAnchor="middle">
+      <rect x={SHEET.pad} y={172} width={316} height={30} fill="none" stroke={INK} strokeWidth={0.9} />
+      <text x={SHEET.pad + 8} y={191} fontSize={9} fill={INK}>{carrier.truck}</text>
+      <text x={SHEET.pad + 158} y={212} fontSize={7} fill={FAINT} textAnchor="middle">
         Truck/Tractor and Trailer Numbers or License Plate(s)/State (show each unit)
       </text>
 
-      <Field x={392} y={210} width={402} label="Home Terminal Address" value={carrier.terminal} />
+      <Field x={392} y={196} width={402} label="Home Terminal Address" value={carrier.terminal} />
 
       {/* ---------- the graph grid ---------- */}
       <rect x={SHEET.gridLeft} y={SHEET.bandTop} width={GRID_WIDTH} height={SHEET.bandHeight} fill={INK} />
-      {HOUR_LABELS.map((label, hour) => (
-        <text
-          key={`h-${hour}`}
-          x={SHEET.gridLeft + hour * HOUR_WIDTH}
-          y={SHEET.bandTop + 15}
-          fontSize={label.length > 2 ? 5.6 : 7.4}
-          fill="#ffffff"
-          textAnchor="middle"
-          fontFamily="var(--font-sans)"
-          fontWeight={600}
-        >
-          {label}
-        </text>
-      ))}
+      {HOUR_LABELS.map((label, hour) => {
+        // The first and last captions sit on the grid edge; centring them
+        // would hang half the word outside the black band.
+        const isFirst = hour === 0;
+        const isLast = hour === 24;
+        return (
+          <text
+            key={`h-${hour}`}
+            x={SHEET.gridLeft + hour * HOUR_WIDTH + (isFirst ? 3 : isLast ? -3 : 0)}
+            y={SHEET.bandTop + 15}
+            fontSize={label.length > 2 ? 5.6 : 7.4}
+            fill="#ffffff"
+            textAnchor={isFirst ? "start" : isLast ? "end" : "middle"}
+            fontFamily="var(--font-sans)"
+            fontWeight={600}
+          >
+            {label}
+          </text>
+        );
+      })}
       <text x={SHEET.gridRight + 46} y={SHEET.bandTop + 10} fontSize={7} fill={INK}
         textAnchor="middle" fontWeight={600}>Total</text>
       <text x={SHEET.gridRight + 46} y={SHEET.bandTop + 19} fontSize={7} fill={INK}
@@ -217,42 +229,47 @@ export const DailyLogSheet = forwardRef<SVGSVGElement, Props>(function DailyLogS
       </text>
 
       {/* ---------- remarks ---------- */}
-      <text x={SHEET.pad} y={SHEET.remarksTop - 8} fontSize={11} fontWeight={700} fill={INK}
+      <text x={SHEET.pad} y={SHEET.remarksTop + 12} fontSize={11} fontWeight={700} fill={INK}
         fontFamily="var(--font-display)">Remarks</text>
-      <rect x={SHEET.gridLeft} y={SHEET.remarksTop - 24} width={GRID_WIDTH}
+      <rect x={SHEET.gridLeft} y={SHEET.remarksTop} width={GRID_WIDTH}
         height={SHEET.remarksHeight} fill="none" stroke={INK} strokeWidth={0.9} />
 
-      {day.remarks.map((remark, index) => {
-        const x = xForMinute(remark.minute);
-        return (
-          <g key={`rm-${index}`}>
-            <line x1={x} y1={SHEET.remarksTop - 24} x2={x} y2={SHEET.remarksTop - 12}
-              stroke={INK} strokeWidth={0.7} />
-            <text x={x} y={SHEET.remarksTop - 8} fontSize={7.4} fill={INK}
-              transform={`rotate(-62 ${x} ${SHEET.remarksTop - 8})`}
-              fontFamily="var(--font-sans)">
-              {remark.location}
-            </text>
-          </g>
-        );
-      })}
+      {remarkLabels.map((label, index) => (
+        <g key={`rm-${index}`}>
+          {/* Leader from the true duty change to the caption, which may have
+              been nudged sideways to keep two towns from printing on top of
+              each other. */}
+          <line
+            x1={label.tickX} y1={GRID_BOTTOM}
+            x2={label.labelX} y2={SHEET.remarksTop + 6}
+            stroke={INK} strokeWidth={0.5}
+          />
+          <text
+            x={label.labelX} y={REMARK_BASELINE} fontSize={6.6} fill={INK}
+            transform={`rotate(-90 ${label.labelX} ${REMARK_BASELINE})`}
+            fontFamily="var(--font-sans)"
+          >
+            {label.text}
+          </text>
+        </g>
+      ))}
 
-      <text x={SHEET.width / 2} y={SHEET.remarksTop + SHEET.remarksHeight - 14} fontSize={7.5}
+      <text x={SHEET.width / 2} y={SHEET.remarksTop + SHEET.remarksHeight - 16} fontSize={7.5}
         fill={FAINT} textAnchor="middle">
         Enter name of place you reported and where released from work and when and where each change of duty status occurred.
       </text>
-      <text x={SHEET.width / 2} y={SHEET.remarksTop + SHEET.remarksHeight - 2} fontSize={7.5}
+      <text x={SHEET.width / 2} y={SHEET.remarksTop + SHEET.remarksHeight - 5} fontSize={7.5}
         fill={FAINT} textAnchor="middle" fontWeight={600}>
         Use time standard of home terminal.
       </text>
 
       <g>
-        <text x={SHEET.pad} y={SHEET.remarksTop + 24} fontSize={8} fontWeight={600} fill={INK}>
+        <text x={SHEET.pad} y={SHEET.remarksTop + 40} fontSize={8} fontWeight={600} fill={INK}>
           Shipping Documents:
         </text>
-        <Field x={SHEET.pad} y={SHEET.remarksTop + 56} width={80} label="DVL or Manifest No."
+        <Field x={SHEET.pad} y={SHEET.remarksTop + 74} width={82} label="DVL or Manifest No."
           value={carrier.manifest} size={8} />
-        <Field x={SHEET.pad} y={SHEET.remarksTop + 92} width={80} label="Shipper &amp; Commodity"
+        <Field x={SHEET.pad} y={SHEET.remarksTop + 112} width={82} label="Shipper &amp; Commodity"
           value={carrier.shipper} size={8} />
       </g>
 
@@ -260,10 +277,10 @@ export const DailyLogSheet = forwardRef<SVGSVGElement, Props>(function DailyLogS
       <RecapBox day={day} />
 
       {/* ---------- certification ---------- */}
-      <Field x={SHEET.pad} y={SHEET.height - 34} width={330}
+      <Field x={SHEET.pad} y={SHEET.height - 26} width={330}
         label="Driver's signature in full - I certify that these entries are true and correct"
         value={carrier.driver} />
-      <Field x={400} y={SHEET.height - 34} width={200} label="Name of Co-Driver"
+      <Field x={400} y={SHEET.height - 26} width={200} label="Name of Co-Driver"
         value={carrier.coDriver} />
     </svg>
   );

@@ -11,9 +11,9 @@ interface Field {
 const EMPTY: Field = { query: "", place: null };
 
 const SAMPLE = {
-  current: "Dallas, TX",
-  pickup: "Houston, TX",
-  dropoff: "Atlanta, GA",
+  current: { label: "Dallas, TX", lat: 32.7767, lon: -96.797 },
+  pickup: { label: "Houston, TX", lat: 29.7604, lon: -95.3698 },
+  dropoff: { label: "Atlanta, GA", lat: 33.749, lon: -84.388 },
   cycle: "12",
 };
 
@@ -55,9 +55,9 @@ export function TripForm({
   };
 
   const useSample = () => {
-    setCurrent({ query: SAMPLE.current, place: null });
-    setPickup({ query: SAMPLE.pickup, place: null });
-    setDropoff({ query: SAMPLE.dropoff, place: null });
+    setCurrent({ query: SAMPLE.current.label, place: SAMPLE.current });
+    setPickup({ query: SAMPLE.pickup.label, place: SAMPLE.pickup });
+    setDropoff({ query: SAMPLE.dropoff.label, place: SAMPLE.dropoff });
     setCycle(SAMPLE.cycle);
   };
 

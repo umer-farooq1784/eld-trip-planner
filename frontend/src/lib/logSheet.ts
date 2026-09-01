@@ -2,18 +2,18 @@
 
 export const SHEET = {
   width: 1000,
-  height: 940,
+  height: 742,
   pad: 26,
 
   gridLeft: 118,
   gridRight: 902,
-  bandTop: 292,
+  bandTop: 248,
   bandHeight: 24,
   rowHeight: 30,
 
-  remarksTop: 470,
-  remarksHeight: 150,
-  recapTop: 700,
+  remarksTop: 400,
+  remarksHeight: 152,
+  recapTop: 588,
 } as const;
 
 export const GRID_WIDTH = SHEET.gridRight - SHEET.gridLeft;
@@ -47,7 +47,48 @@ export const formatHours = (value: number) => {
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
 };
 
-export const formatClock = (minute: number) => {
-  const m = Math.round(minute);
-  return `${String(Math.floor(m / 60) % 24).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
-};
+/** Narrowest gap between two vertical remark labels before they touch. */
+const REMARK_MIN_GAP = 9.5;
+
+export interface RemarkLabel {
+  /** Where the duty change actually happened, on the grid. */
+  tickX: number;
+  /** Where the text is drawn, nudged right if a neighbour was too close. */
+  labelX: number;
+  text: string;
+}
+
+/**
+ * Lay out the location captions written under the grid. [Guide p.17]
+ *
+ * Two rules, both taken from how the form is filled in by hand:
+ *
+ * 1. A place is written once. A fuel stop produces three duty changes
+ *    (driving, on duty, driving) at one location, and writing the town three
+ *    times just prints it on top of itself.
+ * 2. Where captions would still collide, the text slides right and a leader
+ *    line ties it back to the true tick, rather than letting them overlap.
+ */
+export function layOutRemarks(
+  remarks: { minute: number; location: string }[],
+): RemarkLabel[] {
+  const labels: RemarkLabel[] = [];
+  let previous = "";
+
+  for (const remark of remarks) {
+    if (remark.location === previous) continue;
+    previous = remark.location;
+    const tickX = xForMinute(remark.minute);
+    const last = labels.at(-1);
+    const labelX =
+      last && tickX - last.labelX < REMARK_MIN_GAP ? last.labelX + REMARK_MIN_GAP : tickX;
+    labels.push({ tickX, labelX, text: remark.location });
+  }
+
+  // Pull the run back inside the grid if nudging pushed it off the right edge.
+  const overflow = (labels.at(-1)?.labelX ?? 0) - SHEET.gridRight;
+  if (overflow > 0) {
+    for (const label of labels) label.labelX -= overflow;
+  }
+  return labels;
+}

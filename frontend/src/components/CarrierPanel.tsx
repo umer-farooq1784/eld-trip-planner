@@ -24,6 +24,7 @@ export function CarrierPanel({
     <div className="border-t border-rule">
       <button
         type="button" onClick={() => setOpen(!open)} aria-expanded={open}
+        aria-label={`${open ? "Hide" : "Show"} log sheet header details`}
         className="flex w-full items-center justify-between px-4 py-3 text-left"
       >
         <span className="text-xs font-semibold text-ink">Log sheet header details</span>
