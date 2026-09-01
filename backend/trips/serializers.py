@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from rest_framework import serializers
 
 from .models import Trip
 from .services import hos
+
+#: A log covers the rolling 8-day cycle, so a start earlier than that cannot
+#: be reconciled against the recap. Ahead, this is a planning horizon.
+EARLIEST_START_DAYS = 8
+LATEST_START_DAYS = 30
 
 
 class PlaceInputSerializer(serializers.Serializer):
@@ -31,10 +36,22 @@ class PlanTripSerializer(serializers.Serializer):
     start_at = serializers.DateTimeField(required=False, allow_null=True)
 
     def validate_start_at(self, value):
-        if value is not None and value.tzinfo is not None:
+        if value is None:
+            return value
+        if value.tzinfo is not None:
             # Logs run on a single home-terminal clock, so drop any offset
             # rather than silently shifting the driver's day. [Guide p.16]
-            return value.replace(tzinfo=None)
+            value = value.replace(tzinfo=None)
+
+        now = datetime.now()
+        if value < now - timedelta(days=EARLIEST_START_DAYS):
+            raise serializers.ValidationError(
+                f"Cannot start more than {EARLIEST_START_DAYS} days in the past."
+            )
+        if value > now + timedelta(days=LATEST_START_DAYS):
+            raise serializers.ValidationError(
+                f"Cannot start more than {LATEST_START_DAYS} days ahead."
+            )
         return value
 
     def validate(self, attrs):

@@ -17,10 +17,20 @@ const SAMPLE = {
   cycle: "12",
 };
 
-function localNow() {
-  const now = new Date();
-  now.setSeconds(0, 0);
-  return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+const MAX_CYCLE_HOURS = 70;
+const EARLIEST_DAYS_BACK = 8;
+const LATEST_DAYS_AHEAD = 30;
+
+function toLocalInput(date: Date) {
+  const d = new Date(date);
+  d.setSeconds(0, 0);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+}
+
+function shiftDays(days: number) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return toLocalInput(d);
 }
 
 export function TripForm({
@@ -33,13 +43,44 @@ export function TripForm({
   const [pickup, setPickup] = useState<Field>(EMPTY);
   const [dropoff, setDropoff] = useState<Field>(EMPTY);
   const [cycle, setCycle] = useState("0");
-  const [startAt, setStartAt] = useState(localNow);
+  const [startAt, setStartAt] = useState(() => toLocalInput(new Date()));
   const [touched, setTouched] = useState(false);
 
+  const earliest = shiftDays(-EARLIEST_DAYS_BACK);
+  const latest = shiftDays(LATEST_DAYS_AHEAD);
+
   const cycleValue = Number(cycle);
-  const cycleValid = cycle !== "" && Number.isFinite(cycleValue) && cycleValue >= 0 && cycleValue <= 70;
+  const cycleValid =
+    cycle !== "" &&
+    Number.isFinite(cycleValue) &&
+    cycleValue >= 0 &&
+    cycleValue <= MAX_CYCLE_HOURS;
+  const cycleProblem =
+    cycle === ""
+      ? "Enter hours already used."
+      : !Number.isFinite(cycleValue)
+        ? "Enter a number."
+        : cycleValue < 0
+          ? "Cannot be negative."
+          : cycleValue > MAX_CYCLE_HOURS
+            ? `Limit is ${MAX_CYCLE_HOURS} hours.`
+            : null;
+
+  const startValid = startAt !== "" && startAt >= earliest && startAt <= latest;
+  const startProblem =
+    startAt === ""
+      ? "Pick when the trip starts."
+      : startAt < earliest
+        ? `No earlier than ${EARLIEST_DAYS_BACK} days ago.`
+        : startAt > latest
+          ? `No later than ${LATEST_DAYS_AHEAD} days ahead.`
+          : null;
+
   const filled = [current, pickup, dropoff].every((f) => f.query.trim().length >= 3);
-  const ready = filled && cycleValid;
+  const ready = filled && cycleValid && startValid;
+
+  const showCycleError = cycleProblem !== null && (touched || cycle !== "");
+  const showStartError = startProblem !== null && (touched || startAt !== "");
 
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
@@ -80,12 +121,13 @@ export function TripForm({
           </label>
           <div className="relative">
             <input
-              id="cycle" type="number" min={0} max={70} step={0.25} value={cycle}
+              id="cycle" type="number" min={0} max={MAX_CYCLE_HOURS} step={0.25} value={cycle}
               onChange={(e) => setCycle(e.target.value)}
-              aria-invalid={touched && !cycleValid}
+              aria-invalid={showCycleError}
+              aria-describedby="cycle-hint"
               className={`w-full rounded-md border bg-surface px-3 py-2 pr-10 font-mono text-sm
                           text-ink tabular focus:outline-none ${
-                            touched && !cycleValid
+                            showCycleError
                               ? "border-warn focus:border-warn"
                               : "border-rule focus:border-accent"
                           }`}
@@ -93,11 +135,12 @@ export function TripForm({
             <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2
                              text-xs text-ink-mute">hrs</span>
           </div>
-          <span className="mt-1 block h-4 text-[11px] text-ink-mute">
-            {touched && !cycleValid ? (
-              <span className="text-warn">Enter 0 to 70 hours.</span>
+          <span id="cycle-hint"
+            className="mt-1 block min-h-8 text-[11px] leading-tight text-ink-mute">
+            {showCycleError ? (
+              <span className="text-warn">{cycleProblem}</span>
             ) : (
-              "Of the 70-hour / 8-day limit"
+              `Of the ${MAX_CYCLE_HOURS}-hour / 8-day limit`
             )}
           </span>
         </div>
@@ -108,19 +151,33 @@ export function TripForm({
           </label>
           <input
             id="start" type="datetime-local" value={startAt}
+            min={earliest} max={latest}
             onChange={(e) => setStartAt(e.target.value)}
-            className="w-full rounded-md border border-rule bg-surface px-3 py-2 font-mono
-                       text-sm text-ink tabular focus:border-accent focus:outline-none"
+            aria-invalid={showStartError}
+            aria-describedby="start-hint"
+            className={`w-full rounded-md border bg-surface px-3 py-2 font-mono text-sm
+                        text-ink tabular focus:outline-none ${
+                          showStartError
+                            ? "border-warn focus:border-warn"
+                            : "border-rule focus:border-accent"
+                        }`}
           />
-          <span className="mt-1 block h-4 text-[11px] text-ink-mute">Home terminal clock</span>
+          <span id="start-hint"
+            className="mt-1 block min-h-8 text-[11px] leading-tight text-ink-mute">
+            {showStartError ? (
+              <span className="text-warn">{startProblem}</span>
+            ) : (
+              "Home terminal clock"
+            )}
+          </span>
         </div>
       </div>
 
       <div className="flex items-center gap-3 pt-1">
         <button
-          type="submit" disabled={busy}
+          type="submit" disabled={busy || !ready}
           className="flex-1 rounded-md bg-ink px-4 py-2.5 text-sm font-semibold text-white
-                     transition hover:bg-ink/90 disabled:cursor-not-allowed disabled:opacity-60"
+                     transition hover:bg-ink/90 disabled:cursor-not-allowed disabled:opacity-45"
         >
           {busy ? "Planning route…" : "Plan trip & draw logs"}
         </button>

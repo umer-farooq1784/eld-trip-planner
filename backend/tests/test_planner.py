@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 
@@ -229,3 +229,30 @@ def test_validation_errors_name_the_field(api, override, expected):
     response = api.post("/api/trips/", body(**override), content_type="application/json")
     assert response.status_code == 400
     assert expected in response.json()["error"]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "offset_days,expect_ok",
+    [(-40, False), (-9, False), (-1, True), (0, True), (10, True), (31, False), (400, False)],
+)
+def test_trip_start_must_be_inside_the_planning_window(api, offset_days, expect_ok):
+    when = (datetime.now() + timedelta(days=offset_days)).replace(microsecond=0)
+    response = api.post(
+        "/api/trips/", body(start_at=when.isoformat()), content_type="application/json"
+    )
+    if expect_ok:
+        assert response.status_code == 201
+    else:
+        assert response.status_code == 400
+        assert "Trip start" in response.json()["error"]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("value", [-2222, -0.25, 70.25, 1000])
+def test_cycle_hours_outside_the_range_are_refused(api, value):
+    response = api.post(
+        "/api/trips/", body(cycle_used_hours=value), content_type="application/json"
+    )
+    assert response.status_code == 400
+    assert "Current cycle used" in response.json()["error"]
