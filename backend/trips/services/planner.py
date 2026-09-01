@@ -7,6 +7,8 @@ clocks, name the places where the duty status changes, then persist.
 from __future__ import annotations
 
 import logging
+import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -22,6 +24,16 @@ logger = logging.getLogger(__name__)
 #: Cap on reverse-geocode lookups per plan, so one enormous trip cannot burn
 #: through the daily API quota. Beyond this, remarks fall back to mile markers.
 MAX_REVERSE_LOOKUPS = 40
+
+#: Reverse geocoding is best-effort decoration on an already-correct plan, so
+#: it gets a wall-clock budget rather than being allowed to dominate the
+#: request. Anything unresolved when the budget runs out falls back to a mile
+#: marker, which is a legal Remarks entry in its own right. [Guide p.17]
+REVERSE_LOOKUP_BUDGET_SECONDS = 6.0
+
+#: Concurrent outbound lookups. Pelias allows 100/min, so this stays well
+#: inside quota while cutting a dozen sequential round trips to two or three.
+LOOKUP_CONCURRENCY = 6
 
 
 @dataclass
@@ -81,38 +93,63 @@ class _Locator:
             return interpolate_at_mile(points, totals, fraction * totals[-1])
         return None
 
-    def label(self, trip_miles: float) -> str:
-        position = self.position(trip_miles)
-        if position is None:
-            return f"Mile {trip_miles:,.0f}"
+    def resolve(self, mileages: list[float]) -> dict[float, str]:
+        """Name every distinct place the driver stops at, in one batch.
 
-        lat, lon = position
-        key = PlaceCache.key_for(lat, lon)
-        if key in self._by_grid:
-            return self._by_grid[key]
+        Database work stays on this thread and only the HTTP calls fan out:
+        Django connections are thread-local, and opening one per worker just
+        to read a cache row is not worth the cleanup burden.
+        """
+        fallback = {m: f"Mile {m:,.0f}" for m in mileages}
+        positions = {m: self.position(m) for m in mileages}
 
-        cached = PlaceCache.objects.filter(grid_key=key).first()
-        if cached:
-            self._by_grid[key] = cached.label
-            return cached.label
+        # Distinct grid squares, so two stops in one town cost a single lookup.
+        wanted: dict[str, tuple[float, float]] = {}
+        key_for_mile: dict[float, str] = {}
+        for mile, position in positions.items():
+            if position is None:
+                continue
+            key = PlaceCache.key_for(*position)
+            key_for_mile[mile] = key
+            wanted.setdefault(key, position)
 
-        label = ""
-        if self.lookups < MAX_REVERSE_LOOKUPS:
-            self.lookups += 1
-            try:
-                label = self.provider.reverse(lat, lon)
-            except Exception:  # noqa: BLE001 - remarks must never fail a plan
-                logger.warning("Reverse geocode failed at %.4f,%.4f", lat, lon, exc_info=True)
+        resolved: dict[str, str] = {
+            row.grid_key: row.label
+            for row in PlaceCache.objects.filter(grid_key__in=list(wanted))
+        }
+        missing = [(k, v) for k, v in wanted.items() if k not in resolved][:MAX_REVERSE_LOOKUPS]
 
-        if not label:
-            label = f"Mile {trip_miles:,.0f}"
-        else:
-            PlaceCache.objects.update_or_create(
-                grid_key=key, defaults={"lat": lat, "lon": lon, "label": label}
-            )
+        if missing:
+            deadline = time.monotonic() + REVERSE_LOOKUP_BUDGET_SECONDS
 
-        self._by_grid[key] = label
-        return label
+            def lookup(item):
+                key, (lat, lon) = item
+                if time.monotonic() > deadline:
+                    return key, lat, lon, ""
+                try:
+                    return key, lat, lon, self.provider.reverse(lat, lon)
+                except Exception:  # noqa: BLE001 - remarks never fail a plan
+                    logger.warning("Reverse geocode failed at %.4f,%.4f", lat, lon)
+                    return key, lat, lon, ""
+
+            with ThreadPoolExecutor(max_workers=min(LOOKUP_CONCURRENCY, len(missing))) as pool:
+                results = list(pool.map(lookup, missing))
+
+            self.lookups += sum(1 for *_, label in results if label)
+            fresh = [
+                PlaceCache(grid_key=key, lat=lat, lon=lon, label=label)
+                for key, lat, lon, label in results
+                if label
+            ]
+            if fresh:
+                PlaceCache.objects.bulk_create(fresh, ignore_conflicts=True)
+            resolved.update({key: label for key, _, _, label in results if label})
+
+        self._by_grid.update(resolved)
+        return {
+            mile: resolved.get(key_for_mile.get(mile, ""), fallback[mile])
+            for mile in mileages
+        }
 
 
 def plan_trip(
@@ -127,7 +164,10 @@ def plan_trip(
 ) -> dict:
     provider = provider or get_provider()
 
-    places = [current.resolve(provider), pickup.resolve(provider), dropoff.resolve(provider)]
+    # The three inputs are independent, so resolve them together rather than
+    # paying three sequential round trips.
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        places = list(pool.map(lambda field: field.resolve(provider), [current, pickup, dropoff]))
     route = provider.route(places)
     if len(route.legs) != 2:
         raise RoutingError("Routing did not return the expected two legs.")
@@ -152,11 +192,16 @@ def plan_trip(
     simulation = hos.simulate(trip_input, locator=lambda miles: f"@{miles:.1f}")
 
     locator = _Locator(provider, route)
-    resolved: dict[str, str] = {}
+    placeholders = {
+        segment.location: segment.trip_miles_at_start
+        for segment in simulation.segments
+        if segment.location.startswith("@")
+    }
+    by_mile = locator.resolve(sorted(set(placeholders.values())))
+    resolved = {token: by_mile[mile] for token, mile in placeholders.items()}
+
     for segment in simulation.segments:
-        if segment.location.startswith("@"):
-            if segment.location not in resolved:
-                resolved[segment.location] = locator.label(segment.trip_miles_at_start)
+        if segment.location in resolved:
             segment.location = resolved[segment.location]
     for day in simulation.days:
         for segment in day.segments:
