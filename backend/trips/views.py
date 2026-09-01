@@ -57,10 +57,29 @@ def api_exception_handler(exc, context):
     if isinstance(detail, dict) and "detail" in detail:
         response.data = {"error": str(detail["detail"])}
     elif isinstance(detail, dict):
-        response.data = {"error": "Please check the highlighted fields.", "fields": detail}
+        response.data = {"error": _first_field_error(detail), "fields": detail}
     else:
         response.data = {"error": "Request could not be processed."}
     return response
+
+
+FIELD_NAMES = {
+    "current": "Current location",
+    "pickup": "Pickup location",
+    "dropoff": "Dropoff location",
+    "cycle_used_hours": "Current cycle used",
+    "start_at": "Trip start",
+}
+
+
+def _first_field_error(detail: dict) -> str:
+    for field, problem in detail.items():
+        label = FIELD_NAMES.get(field, field)
+        while isinstance(problem, dict):
+            _, problem = next(iter(problem.items()))
+        text = problem[0] if isinstance(problem, list) and problem else str(problem)
+        return f"{label}: {text}"
+    return "Please check the form and try again."
 
 
 @api_view(["GET"])

@@ -232,3 +232,18 @@ def test_explicit_coordinates_skip_geocoding_entirely(stub_provider):
     place = PlaceInput("Anywhere", 10.0, 20.0).resolve(stub_provider)
     assert (place.lat, place.lon) == (10.0, 20.0)
     assert stub_provider.geocode_calls == 0
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "override,expected",
+    [
+        ({"cycle_used_hours": 99}, "Current cycle used"),
+        ({"cycle_used_hours": -5}, "Current cycle used"),
+        ({"dropoff": {"query": ""}}, "Dropoff location"),
+    ],
+)
+def test_validation_errors_name_the_field(api, override, expected):
+    response = api.post("/api/trips/", body(**override), content_type="application/json")
+    assert response.status_code == 400
+    assert expected in response.json()["error"]

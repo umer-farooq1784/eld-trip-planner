@@ -226,12 +226,23 @@ def _describe_ors_error(response: requests.Response) -> str:
         payload = response.json().get("error")
     except ValueError:
         payload = None
-    message = payload.get("message") if isinstance(payload, dict) else payload
+
+    code = payload.get("code") if isinstance(payload, dict) else None
+    message = str(payload.get("message") if isinstance(payload, dict) else payload or "")
+
+    if code == 2004 or "must not be greater than" in message:
+        return (
+            "That trip is too long to route in one go, or the stops are not "
+            "connected by road. Check that all three are on the same road network."
+        )
+    if code == 2010 or "not found" in message.lower():
+        return (
+            "No road route could be found between those locations. One of them "
+            "may not be reachable by road."
+        )
     if not message:
-        return f"Route service returned HTTP {response.status_code}."
-    if "2010" in str(message) or "not found" in str(message).lower():
-        return "No road route could be found between those locations."
-    return str(message)
+        return f"The routing service returned HTTP {response.status_code}."
+    return message
 
 
 # ---------------------------------------------------------------------------
