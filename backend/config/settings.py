@@ -21,8 +21,12 @@ def env_list(name: str, default: str = "") -> list[str]:
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "insecure-dev-key-do-not-use-in-production")
 DEBUG = env_bool("DJANGO_DEBUG", True)
 
-ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,.onrender.com")
-CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS", "https://*.onrender.com")
+ALLOWED_HOSTS = env_list(
+    "DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,.onrender.com,.vercel.app"
+)
+CSRF_TRUSTED_ORIGINS = env_list(
+    "DJANGO_CSRF_TRUSTED_ORIGINS", "https://*.onrender.com,https://*.vercel.app"
+)
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -66,11 +70,15 @@ TEMPLATES = [
     },
 ]
 
+# Serverless functions freeze between invocations, so a long-lived connection
+# is a liability rather than an optimisation: Neon's pooled endpoint does the
+# reuse for us. Persistent hosts can raise this via DB_CONN_MAX_AGE.
 DATABASES = {
     "default": dj_database_url.config(
         default=os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'db.sqlite3'}"),
-        conn_max_age=600,
+        conn_max_age=int(os.getenv("DB_CONN_MAX_AGE", "0")),
         conn_health_checks=True,
+        ssl_require=bool(os.getenv("DATABASE_URL")),
     )
 }
 
@@ -97,6 +105,26 @@ STORAGES = {
 }
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# --- production hardening ---------------------------------------------------
+if not DEBUG:
+    # Both Vercel and Render terminate TLS upstream, so the redirect decision
+    # has to come from the forwarded header rather than the socket.
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_SSL_REDIRECT = env_bool("DJANGO_SECURE_SSL_REDIRECT", True)
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = "DENY"
+
+    # Off by default on purpose. On a shared host like *.vercel.app an HSTS
+    # header with includeSubDomains would be imposed on domains that are not
+    # ours, and the platform already sends its own. Set this once the app has
+    # a custom domain.
+    SECURE_HSTS_SECONDS = int(os.getenv("DJANGO_HSTS_SECONDS", "0"))
+    if SECURE_HSTS_SECONDS:
+        SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+        SECURE_HSTS_PRELOAD = True
 
 REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
