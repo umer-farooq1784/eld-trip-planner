@@ -1,0 +1,38 @@
+# Render Blueprint. Create the service with New -> Blueprint and point it at
+# this repo; Render reads this file and prompts for the two secrets below.
+services:
+  - type: web
+    name: eld-trip-planner-api
+    runtime: python
+    plan: free
+    region: ohio            # same region as the Neon project
+    rootDir: backend
+    branch: main
+    buildCommand: >-
+      pip install -r requirements.txt &&
+      python manage.py collectstatic --noinput &&
+      python manage.py migrate --noinput
+    startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 60
+    healthCheckPath: /api/healthz/
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.12"
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DJANGO_DEBUG
+        value: "False"
+      - key: DJANGO_ALLOWED_HOSTS
+        value: ".onrender.com"
+      - key: ORS_PROFILE
+        value: driving-hgv
+      - key: ORS_BASE_URL
+        value: https://api.heigit.org/openrouteservice
+      - key: ORS_GEOCODE_URL
+        value: https://api.heigit.org/pelias/v1
+      - key: PLANNING_SPEED_MPH
+        value: "55"
+      # Prompted for on first deploy, never stored in the repo.
+      - key: DATABASE_URL
+        sync: false
+      - key: ORS_API_KEY
+        sync: false

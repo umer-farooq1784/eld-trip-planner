@@ -49,6 +49,8 @@ class RoutedLeg:
     distance_miles: float
     duration_hours: float
     geometry: list[tuple[float, float]] = field(default_factory=list)
+    #: What the routing provider itself predicted, kept for comparison.
+    provider_duration_hours: float | None = None
 
     @property
     def avg_speed_mph(self) -> float:
@@ -96,17 +98,37 @@ class Provider(Protocol):
 class OpenRouteServiceProvider:
     is_estimated = False
 
-    def __init__(self, api_key: str, base_url: str, profile: str, timeout: float) -> None:
+    def __init__(
+        self,
+        api_key: str,
+        base_url: str,
+        geocode_url: str,
+        profile: str,
+        timeout: float,
+        planning_speed_mph: float,
+    ) -> None:
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
+        self.geocode_url = geocode_url.rstrip("/")
         self.profile = profile
         self.timeout = timeout
+        self.planning_speed_mph = planning_speed_mph
 
-    def _get(self, path: str, params: dict) -> dict:
+    @property
+    def _auth_headers(self) -> dict:
+        # HeiGIT accepts the key as a bearer-style Authorization header on every
+        # service. Keys issued since the 2025 migration are JWTs.
+        return {
+            "Authorization": self.api_key,
+            "Accept": "application/json",
+            "User-Agent": USER_AGENT,
+        }
+
+    def _get(self, url: str, params: dict) -> dict:
         response = requests.get(
-            f"{self.base_url}{path}",
-            params={**params, "api_key": self.api_key},
-            headers={"Accept": "application/json", "User-Agent": USER_AGENT},
+            url,
+            params=params,
+            headers=self._auth_headers,
             timeout=self.timeout,
         )
         if response.status_code == 429:
@@ -124,14 +146,14 @@ class OpenRouteServiceProvider:
 
     def geocode(self, query: str, limit: int = 5) -> list[Place]:
         data = self._get(
-            "/geocode/search",
+            f"{self.geocode_url}/search",
             {"text": query, "size": limit, "boundary.country": "USA"},
         )
         return [self._place_from_feature(f) for f in data.get("features", [])]
 
     def reverse(self, lat: float, lon: float) -> str:
         data = self._get(
-            "/geocode/reverse",
+            f"{self.geocode_url}/reverse",
             {"point.lat": lat, "point.lon": lon, "size": 1,
              "layers": "locality,localadmin,county"},
         )
@@ -141,15 +163,15 @@ class OpenRouteServiceProvider:
     def route(self, waypoints: list[Place]) -> Route:
         response = requests.post(
             f"{self.base_url}/v2/directions/{self.profile}/geojson",
-            json={
-                "coordinates": [[p.lon, p.lat] for p in waypoints],
-                "units": "mi",
-                "instructions": False,
-            },
+            # `instructions: false` makes the API omit `segments` entirely, and
+            # segments are the only source of per-leg distance. Units are left
+            # at the default (metres) and converted here.
+            json={"coordinates": [[p.lon, p.lat] for p in waypoints]},
             headers={
-                "Authorization": self.api_key,
+                **self._auth_headers,
                 "Content-Type": "application/json",
-                "User-Agent": USER_AGENT,
+                # The geojson endpoint rejects application/json with a 406.
+                "Accept": "application/geo+json",
             },
             timeout=self.timeout,
         )
@@ -158,21 +180,31 @@ class OpenRouteServiceProvider:
         if response.status_code >= 400:
             raise RoutingError(_describe_ors_error(response))
 
-        feature = response.json()["features"][0]
-        coordinates = feature["geometry"]["coordinates"]
-        points = [(lat, lon) for lon, lat in coordinates]
-        props = feature["properties"]
-        cuts = props.get("way_points") or [0, len(points) - 1]
+        return self._parse_route(response.json(), waypoints)
 
+    def _parse_route(self, payload: dict, waypoints: list[Place]) -> Route:
+        try:
+            feature = payload["features"][0]
+            points = [(lat, lon) for lon, lat in feature["geometry"]["coordinates"]]
+            props = feature["properties"]
+            segments = props["segments"]
+        except (KeyError, IndexError, TypeError) as exc:
+            raise RoutingError(
+                "The routing service returned an unexpected response shape."
+            ) from exc
+
+        cuts = props.get("way_points") or [0, len(points) - 1]
         legs: list[RoutedLeg] = []
-        for index, segment in enumerate(props["segments"]):
+        for index, segment in enumerate(segments):
             start, end = cuts[index], cuts[index + 1]
+            miles = segment["distance"] / METERS_PER_MILE
             legs.append(
                 RoutedLeg(
                     origin=waypoints[index],
                     destination=waypoints[index + 1],
-                    distance_miles=segment["distance"] / METERS_PER_MILE,
-                    duration_hours=segment["duration"] / 3600.0,
+                    distance_miles=miles,
+                    duration_hours=miles / self.planning_speed_mph,
+                    provider_duration_hours=segment["duration"] / 3600.0,
                     geometry=points[start : end + 1],
                 )
             )
@@ -266,8 +298,10 @@ def get_provider() -> Provider:
         return OpenRouteServiceProvider(
             api_key=settings.ORS_API_KEY,
             base_url=settings.ORS_BASE_URL,
+            geocode_url=settings.ORS_GEOCODE_URL,
             profile=settings.ORS_PROFILE,
             timeout=settings.ORS_TIMEOUT_SECONDS,
+            planning_speed_mph=settings.PLANNING_SPEED_MPH,
         )
     logger.warning("ORS_API_KEY is unset; falling back to estimated distances.")
     return FallbackProvider()

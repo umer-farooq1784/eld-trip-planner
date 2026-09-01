@@ -114,7 +114,16 @@ CORS_ALLOWED_ORIGINS = env_list(
 CORS_ALLOWED_ORIGIN_REGEXES = [r"^https://.*\.vercel\.app$"]
 
 # --- Routing provider -------------------------------------------------------
+# api.openrouteservice.org was shut off on 24 Aug 2026. HeiGIT's unified API
+# splits routing and geocoding across different service prefixes.
 ORS_API_KEY = os.getenv("ORS_API_KEY", "")
-ORS_BASE_URL = os.getenv("ORS_BASE_URL", "https://api.openrouteservice.org")
+ORS_BASE_URL = os.getenv("ORS_BASE_URL", "https://api.heigit.org/openrouteservice")
+ORS_GEOCODE_URL = os.getenv("ORS_GEOCODE_URL", "https://api.heigit.org/pelias/v1")
 ORS_PROFILE = os.getenv("ORS_PROFILE", "driving-hgv")
 ORS_TIMEOUT_SECONDS = float(os.getenv("ORS_TIMEOUT_SECONDS", "25"))
+
+# openrouteservice's driving-hgv distances are truck-legal and accurate, but its
+# durations assume roughly 40 mph average, which is far below what a Class 8
+# truck actually runs on interstate. Using them would inflate every log sheet.
+# Distance comes from the provider; duration is derived from this planning speed.
+PLANNING_SPEED_MPH = float(os.getenv("PLANNING_SPEED_MPH", "55"))
