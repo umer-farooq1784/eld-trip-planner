@@ -29,6 +29,7 @@ from .geo import (
     cumulative_miles,
     format_place,
     haversine_miles,
+    simplify_polyline,
 )
 
 logger = logging.getLogger(__name__)
@@ -102,6 +103,7 @@ class OpenRouteServiceProvider:
         profile: str,
         timeout: float,
         planning_speed_mph: float,
+        geometry_tolerance: float = 0.0,
     ) -> None:
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
@@ -109,6 +111,7 @@ class OpenRouteServiceProvider:
         self.profile = profile
         self.timeout = timeout
         self.planning_speed_mph = planning_speed_mph
+        self.geometry_tolerance = geometry_tolerance
 
     @property
     def _auth_headers(self) -> dict:
@@ -210,7 +213,9 @@ class OpenRouteServiceProvider:
                     distance_miles=miles,
                     duration_hours=miles / self.planning_speed_mph,
                     provider_duration_hours=segment["duration"] / 3600.0,
-                    geometry=points[start : end + 1],
+                    geometry=simplify_polyline(
+                        points[start : end + 1], self.geometry_tolerance
+                    ),
                 )
             )
         return Route(legs=legs)
@@ -313,6 +318,7 @@ def get_provider() -> Provider:
             profile=settings.ORS_PROFILE,
             timeout=settings.ORS_TIMEOUT_SECONDS,
             planning_speed_mph=settings.PLANNING_SPEED_MPH,
+            geometry_tolerance=settings.ROUTE_GEOMETRY_TOLERANCE,
         )
     logger.warning("ORS_API_KEY is unset; falling back to estimated distances.")
     return FallbackProvider()

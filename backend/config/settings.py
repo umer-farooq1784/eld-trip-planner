@@ -145,3 +145,8 @@ ORS_TIMEOUT_SECONDS = float(os.getenv("ORS_TIMEOUT_SECONDS", "25"))
 # driving-hgv distances are accurate but its durations imply about 40 mph,
 # so distance comes from the provider and duration from this speed.
 PLANNING_SPEED_MPH = float(os.getenv("PLANNING_SPEED_MPH", "55"))
+
+# Raw geometry for a cross-country route is 21,000 points and half a megabyte
+# of JSON, which dominates both the database write and the response. In
+# degrees; 0.0005 is about 180 ft, sub-pixel at the zoom such a route is seen.
+ROUTE_GEOMETRY_TOLERANCE = float(os.getenv("ROUTE_GEOMETRY_TOLERANCE", "0.0005"))

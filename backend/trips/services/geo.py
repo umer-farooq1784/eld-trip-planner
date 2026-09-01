@@ -73,6 +73,46 @@ def haversine_miles(a: Place | tuple[float, float], b: Place | tuple[float, floa
     return 2 * EARTH_RADIUS_MILES * math.asin(math.sqrt(min(1.0, h)))
 
 
+def simplify_polyline(
+    points: list[tuple[float, float]], tolerance: float
+) -> list[tuple[float, float]]:
+    """Ramer-Douglas-Peucker, iterative so long routes cannot blow the stack.
+
+    Tolerance is in degrees; 0.0005 is roughly 180 ft, which is well under a
+    pixel at the zoom a multi-state route is viewed at.
+    """
+    if tolerance <= 0 or len(points) < 3:
+        return list(points)
+
+    keep = [False] * len(points)
+    keep[0] = keep[-1] = True
+    stack = [(0, len(points) - 1)]
+
+    while stack:
+        start, end = stack.pop()
+        if end <= start + 1:
+            continue
+        x1, y1 = points[start]
+        x2, y2 = points[end]
+        dx, dy = x2 - x1, y2 - y1
+        norm = math.hypot(dx, dy) or 1e-12
+        cross = x2 * y1 - y2 * x1
+
+        worst, index = tolerance, -1
+        for i in range(start + 1, end):
+            x0, y0 = points[i]
+            distance = abs(dy * x0 - dx * y0 + cross) / norm
+            if distance > worst:
+                worst, index = distance, i
+
+        if index != -1:
+            keep[index] = True
+            stack.append((start, index))
+            stack.append((index, end))
+
+    return [point for point, keeping in zip(points, keep) if keeping]
+
+
 def cumulative_miles(points: list[tuple[float, float]]) -> list[float]:
     """Running distance along a polyline, one entry per point."""
     totals = [0.0]

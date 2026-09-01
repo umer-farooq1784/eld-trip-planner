@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-from trips.services.geo import Place
+from trips.services.geo import Place, simplify_polyline
 from trips.services.routing import METERS_PER_MILE, OpenRouteServiceProvider, RoutingError
 
 WAYPOINTS = [
@@ -114,3 +114,25 @@ def test_malformed_payloads_raise_rather_than_crash(payload):
 
 def test_metres_per_mile_constant_is_exact():
     assert METERS_PER_MILE == 1609.344
+
+
+def test_geometry_is_simplified_but_keeps_its_endpoints():
+    detailed = [(30.0 + i * 0.0001, -95.0 + i * 0.0001) for i in range(400)]
+    detailed[200] = (30.02 + 0.004, -95.02)
+
+    kept = simplify_polyline(detailed, 0.0005)
+
+    assert len(kept) < len(detailed) / 4
+    assert kept[0] == detailed[0]
+    assert kept[-1] == detailed[-1]
+    assert detailed[200] in kept, "a real deviation must survive simplification"
+
+
+def test_simplification_is_a_no_op_below_three_points():
+    assert simplify_polyline([(1.0, 2.0), (3.0, 4.0)], 0.01) == [(1.0, 2.0), (3.0, 4.0)]
+    assert simplify_polyline([], 0.01) == []
+
+
+def test_zero_tolerance_keeps_everything():
+    points = [(30.0 + i * 0.001, -95.0) for i in range(50)]
+    assert simplify_polyline(points, 0.0) == points
