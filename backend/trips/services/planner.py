@@ -211,9 +211,9 @@ def plan_trip(
             if remark.location.startswith("@"):
                 remark.location = resolved.get(remark.location, remark.location)
 
-    payload = build_payload(places, route, simulation, cycle_used_hours)
+    payload = build_payload(places, route, simulation, cycle_used_hours, locator)
     if persist:
-        trip = _persist(places, route, simulation, cycle_used_hours, start_at, payload, locator)
+        trip = _persist(places, route, simulation, cycle_used_hours, start_at, payload)
         payload["id"] = str(trip.id)
         payload["created_at"] = trip.created_at.isoformat()
     return payload
@@ -229,7 +229,11 @@ def _minute_of_day(moment: datetime, day) -> int:
 
 
 def build_payload(
-    places: list[Place], route: Route, simulation: hos.Simulation, cycle_used_hours: float
+    places: list[Place],
+    route: Route,
+    simulation: hos.Simulation,
+    cycle_used_hours: float,
+    locator: "_Locator | None" = None,
 ) -> dict:
     current, pickup, dropoff = places
 
@@ -285,6 +289,9 @@ def build_payload(
                 "depart_at": stop.end.isoformat(),
                 "duration_hours": round(stop.hours, 2),
                 "trip_miles": round(stop.trip_miles_at_start, 1),
+                # Without these the map draws the route but none of the stop
+                # markers, which is half of what the map is for.
+                **_coords(locator, stop.trip_miles_at_start),
             }
             for index, stop in enumerate(simulation.stops)
         ],
@@ -330,7 +337,7 @@ def build_payload(
 
 
 @transaction.atomic
-def _persist(places, route, simulation, cycle_used_hours, start_at, payload, locator) -> Trip:
+def _persist(places, route, simulation, cycle_used_hours, start_at, payload) -> Trip:
     current, pickup, dropoff = places
     trip = Trip.objects.create(
         current_label=current.label, current_lat=current.lat, current_lon=current.lon,
@@ -359,7 +366,8 @@ def _persist(places, route, simulation, cycle_used_hours, start_at, payload, loc
             depart_at=entry["depart_at"],
             duration_hours=entry["duration_hours"],
             trip_miles=entry["trip_miles"],
-            **_coords(locator, entry["trip_miles"]),
+            lat=entry["lat"],
+            lon=entry["lon"],
         )
         for entry in payload["stops"]
     )
@@ -384,6 +392,6 @@ def _persist(places, route, simulation, cycle_used_hours, start_at, payload, loc
     return trip
 
 
-def _coords(locator: _Locator, trip_miles: float) -> dict:
-    position = locator.position(trip_miles)
+def _coords(locator: "_Locator | None", trip_miles: float) -> dict:
+    position = locator.position(trip_miles) if locator else None
     return {"lat": position[0], "lon": position[1]} if position else {"lat": None, "lon": None}

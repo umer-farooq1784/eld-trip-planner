@@ -187,3 +187,26 @@ def test_geocode_ignores_short_queries(api, stub_provider):
     assert api.get("/api/geocode/?q=ab").json()["results"] == []
     assert stub_provider.geocode_calls == 0
     assert api.get("/api/geocode/?q=Dallas").json()["results"]
+
+
+@pytest.mark.django_db
+def test_fresh_plans_carry_stop_coordinates(api):
+    """Regression: the map drew the route but no stop markers.
+
+    Coordinates were only computed on the persistence path, so a freshly
+    planned trip came back with lat/lon null on every stop and the pins only
+    appeared if you reloaded the trip from history -- which is not the flow
+    anyone actually uses.
+    """
+    created = api.post("/api/trips/", body(), content_type="application/json").json()
+
+    assert created["stops"], "expected at least a pickup and a dropoff"
+    for stop in created["stops"]:
+        assert stop["lat"] is not None, f"{stop['kind']} stop has no latitude"
+        assert stop["lon"] is not None, f"{stop['kind']} stop has no longitude"
+
+    # And the stored copy must agree with what was just returned.
+    fetched = api.get(f"/api/trips/{created['id']}/").json()
+    assert [(s["lat"], s["lon"]) for s in fetched["stops"]] == [
+        (s["lat"], s["lon"]) for s in created["stops"]
+    ]
