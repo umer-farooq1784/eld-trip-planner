@@ -101,7 +101,10 @@ def geocode(request):
         return Response({"results": []})
 
     places = get_provider().geocode(query, limit=6)
-    return Response({"results": [place.as_dict() for place in places]})
+    response = Response({"results": [place.as_dict() for place in places]})
+    # Place coordinates do not move, so let the browser keep them.
+    response["Cache-Control"] = "public, max-age=3600, stale-while-revalidate=86400"
+    return response
 
 
 @api_view(["GET", "POST"])

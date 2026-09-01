@@ -61,8 +61,22 @@ export const getTrip = (id: string) => request<TripPlan>(`/trips/${id}/`);
 export const listTrips = () =>
   request<{ results: TripSummaryRow[] }>("/trips/").then((r) => r.results);
 
-export const geocode = (query: string, signal?: AbortSignal) =>
-  request<{ results: Place[] }>(
+const geocodeCache = new Map<string, Place[]>();
+const GEOCODE_CACHE_LIMIT = 120;
+
+export async function geocode(query: string, signal?: AbortSignal): Promise<Place[]> {
+  const key = query.trim().toLowerCase();
+  const hit = geocodeCache.get(key);
+  if (hit) return hit;
+
+  const { results } = await request<{ results: Place[] }>(
     `/geocode/?q=${encodeURIComponent(query)}`,
     { signal },
-  ).then((r) => r.results);
+  );
+
+  if (geocodeCache.size >= GEOCODE_CACHE_LIMIT) {
+    geocodeCache.delete(geocodeCache.keys().next().value!);
+  }
+  geocodeCache.set(key, results);
+  return results;
+}

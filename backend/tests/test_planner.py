@@ -256,3 +256,9 @@ def test_cycle_hours_outside_the_range_are_refused(api, value):
     )
     assert response.status_code == 400
     assert "Current cycle used" in response.json()["error"]
+
+
+def test_geocode_responses_are_cacheable(api):
+    response = api.get("/api/geocode/?q=Dallas")
+    assert response.status_code == 200
+    assert "max-age" in response.headers["Cache-Control"]

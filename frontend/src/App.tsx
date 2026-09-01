@@ -107,7 +107,13 @@ export default function App() {
           {!busy && !plan && !error && <EmptyState />}
 
           {plan && (
-            <>
+            <div className="relative">
+              {busy && <PlanningOverlay />}
+              <div
+                className={busy ? "pointer-events-none opacity-40 transition-opacity" : "transition-opacity"}
+                aria-busy={busy}
+              >
+                <div className="space-y-5">
               <SummaryBar plan={plan} />
               <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5 xl:grid-cols-[minmax(0,1fr)_360px] print:hidden">
                 <RouteMap plan={plan} />
@@ -121,11 +127,38 @@ export default function App() {
                 </section>
               </div>
               <LogSheets key={plan.id ?? plan.summary.start_at} plan={plan} carrier={carrier} />
-            </>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </main>
     </div>
+  );
+}
+
+function PlanningOverlay() {
+  return (
+    <div
+      role="status"
+      className="pointer-events-none absolute inset-0 z-20 flex items-start justify-center pt-24 print:hidden"
+    >
+      <div className="sticky top-32 flex items-center gap-3 rounded-lg border border-rule
+                      bg-surface px-4 py-3 shadow-lg">
+        <Spinner />
+        <span className="text-sm font-medium text-ink">Planning route&hellip;</span>
+      </div>
+    </div>
+  );
+}
+
+function Spinner() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5 animate-spin text-accent" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="3" opacity="0.2" />
+      <path d="M21 12a9 9 0 0 0-9-9" fill="none" stroke="currentColor" strokeWidth="3"
+            strokeLinecap="round" />
+    </svg>
   );
 }
 
@@ -150,6 +183,10 @@ function EmptyState() {
 function Skeleton() {
   return (
     <div className="space-y-5" aria-busy="true" aria-label="Planning the trip">
+      <div className="flex items-center gap-3 rounded-lg border border-rule bg-surface px-4 py-3">
+        <Spinner />
+        <span className="text-sm font-medium text-ink">Planning route&hellip;</span>
+      </div>
       <div className="h-[92px] animate-pulse rounded-lg border border-rule bg-surface" />
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="h-[440px] animate-pulse rounded-lg border border-rule bg-surface" />

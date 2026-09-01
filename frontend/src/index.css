@@ -70,6 +70,10 @@
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+  /* A frozen spinner reads as a broken page, so let this one keep turning. */
+  .animate-spin {
+    animation-duration: 900ms !important;
+  }
 }
 
 @media print {
