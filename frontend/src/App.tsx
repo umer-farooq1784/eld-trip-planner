@@ -25,8 +25,13 @@ export default function App() {
     saveCarrier(next);
   }, []);
 
+  const [historyFailed, setHistoryFailed] = useState(false);
+
   const refreshHistory = useCallback(() => {
-    listTrips().then(setHistory).catch(() => undefined);
+    setHistoryFailed(false);
+    listTrips()
+      .then(setHistory)
+      .catch(() => setHistoryFailed(true));
   }, []);
 
   useEffect(refreshHistory, [refreshHistory]);
@@ -105,7 +110,17 @@ export default function App() {
                 )}
               </div>
               <div className="max-h-72 overflow-y-auto">
-                <TripHistory trips={history} activeId={plan?.id ?? null} onOpen={open} />
+                {historyFailed ? (
+                  <div className="px-4 py-5 text-center">
+                    <p className="text-xs text-ink-mid">Could not load saved trips.</p>
+                    <button type="button" onClick={refreshHistory}
+                      className="mt-1.5 text-xs font-medium text-accent underline underline-offset-2">
+                      Try again
+                    </button>
+                  </div>
+                ) : (
+                  <TripHistory trips={history} activeId={plan?.id ?? null} onOpen={open} />
+                )}
               </div>
             </div>
           </div>
@@ -121,7 +136,7 @@ export default function App() {
 
           {busy && !plan && <Skeleton />}
 
-          {!busy && !plan && !error && <EmptyState carrier={carrier} />}
+          {!busy && !plan && <EmptyState carrier={carrier} />}
 
           {plan && (
             <div className="relative">

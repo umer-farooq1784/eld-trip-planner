@@ -59,13 +59,23 @@ export function LogSheets({ plan, carrier }: { plan: TripPlan; carrier: CarrierD
         </span>
         <div className="ml-auto flex gap-2 print:hidden">
           <button type="button" onClick={exportPng} disabled={exporting}
-            className="rounded-md border border-rule px-3 py-1.5 text-xs font-medium text-ink-mid
-                       transition hover:border-accent hover:text-accent disabled:opacity-60">
+            className="flex items-center gap-1.5 rounded-md border border-rule px-3 py-1.5
+                       text-xs font-medium text-ink-mid transition hover:border-accent
+                       hover:text-accent disabled:opacity-60">
+            <svg viewBox="0 0 14 14" className="h-3.5 w-3.5" fill="none" stroke="currentColor"
+              strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M7 1.5v7.5M4 6.5 7 9.5l3-3M2 11.5h10" />
+            </svg>
             {exporting ? "Saving…" : "Download PNG"}
           </button>
           <button type="button" onClick={() => window.print()}
-            className="rounded-md border border-rule px-3 py-1.5 text-xs font-medium text-ink-mid
-                       transition hover:border-accent hover:text-accent">
+            className="flex items-center gap-1.5 rounded-md border border-rule px-3 py-1.5
+                       text-xs font-medium text-ink-mid transition hover:border-accent
+                       hover:text-accent">
+            <svg viewBox="0 0 14 14" className="h-3.5 w-3.5" fill="none" stroke="currentColor"
+              strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M4 5V1.5h6V5M4 10.5H2.5v-4h9v4H10M4 8.5h6v4H4z" />
+            </svg>
             Print all / PDF
           </button>
         </div>
