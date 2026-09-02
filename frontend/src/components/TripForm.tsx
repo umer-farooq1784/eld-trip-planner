@@ -176,7 +176,7 @@ export function TripForm({
 
         <div>
           <span className="mb-1 block text-xs font-semibold text-ink">Trip start</span>
-          <div className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+          <div className="grid grid-cols-1 gap-2">
             <input
               id="start" type="date" value={startDate}
               min={earliest} max={latest}
