@@ -40,6 +40,25 @@ function FitToRoute({ points }: { points: [number, number][] }) {
   return null;
 }
 
+/** The same canvas the route lands on, shown before there is one. */
+export function PreviewMap({ caption }: { caption: string }) {
+  return (
+    <div className="relative h-[440px] overflow-hidden rounded-lg border border-rule">
+      <MapContainer center={[39.5, -98.35]} zoom={4} scrollWheelZoom={false}
+        dragging={false} doubleClickZoom={false} zoomControl={false}
+        attributionControl={false} className="h-full w-full opacity-70">
+        <TileLayer url="https://tile.openstreetmap.org/{z}/{x}/{y}.png" maxZoom={19} />
+      </MapContainer>
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+        <span className="rounded-full border border-rule bg-surface/95 px-4 py-2 text-xs
+                         font-medium text-ink-mid shadow-sm">
+          {caption}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export function RouteMap({ plan }: { plan: TripPlan }) {
   const points = plan.route.geometry as [number, number][];
 

@@ -120,7 +120,7 @@ export function TripForm({
         value={dropoff.query} place={dropoff.place} error={missing(dropoff)}
         onChange={(query, place) => setDropoff({ query, place })} />
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="space-y-3">
         <div>
           <label htmlFor="cycle" className="mb-1 block text-xs font-semibold text-ink">
             Current cycle used
@@ -128,6 +128,7 @@ export function TripForm({
           <div className="relative">
             <input
               id="cycle" type="number" min={0} max={MAX_CYCLE_HOURS} step={0.25} value={cycle}
+              inputMode="decimal"
               onChange={(e) => setCycle(e.target.value)}
               aria-invalid={showCycleError}
               aria-describedby="cycle-hint"
@@ -158,10 +159,11 @@ export function TripForm({
           <input
             id="start" type="datetime-local" value={startAt}
             min={earliest} max={latest}
+            style={{ colorScheme: "light" }}
             onChange={(e) => setStartAt(e.target.value)}
             aria-invalid={showStartError}
             aria-describedby="start-hint"
-            className={`w-full rounded-md border bg-surface px-3 py-2 font-mono text-sm
+            className={`w-full rounded-md border bg-surface px-2.5 py-2 font-mono text-[13px]
                         text-ink tabular focus:outline-none ${
                           showStartError
                             ? "border-warn focus:border-warn"
