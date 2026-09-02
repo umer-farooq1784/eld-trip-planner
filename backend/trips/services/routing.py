@@ -16,6 +16,7 @@ Two implementations behind one interface:
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass, field
 from typing import Protocol
 
@@ -35,8 +36,16 @@ from .geo import (
 logger = logging.getLogger(__name__)
 
 METERS_PER_MILE = 1609.344
+
+#: How far openrouteservice may look for a truck-legal road when snapping a
+#: waypoint. The default of 350 m fails on city centroids that land in a park
+#: or a pedestrian zone, which the driving-hgv profile will not route on.
+SNAP_RADIUS_METERS = 5000
 NOMINATIM_URL = "https://nominatim.openstreetmap.org"
 GEOCODE_LAYERS = "address,locality,localadmin,borough,county,region,postalcode"
+
+#: Too coarse to be a trip endpoint: a whole state has no single address.
+VAGUE_LAYERS = {"region", "macroregion", "country", "dependency"}
 USER_AGENT = "eld-trip-planner/1.0 (HOS compliance demo)"
 
 
@@ -135,7 +144,7 @@ class OpenRouteServiceProvider:
         return response.json()
 
     @staticmethod
-    def _place_from_feature(feature: dict) -> Place:
+    def _place_from_feature(feature: dict, query: str = "") -> Place:
         props = feature.get("properties", {})
         lon, lat = feature["geometry"]["coordinates"][:2]
         city = props.get("locality") or props.get("localadmin") or props.get("county")
@@ -144,7 +153,7 @@ class OpenRouteServiceProvider:
             label=label or props.get("label", "Unknown"),
             lat=lat,
             lon=lon,
-            exact=props.get("match_type") != "fallback",
+            exact=names_the_same_place(query, props),
         )
 
     def geocode(self, query: str, limit: int = 5) -> list[Place]:
@@ -158,7 +167,7 @@ class OpenRouteServiceProvider:
                 "layers": GEOCODE_LAYERS,
             },
         )
-        return [self._place_from_feature(f) for f in data.get("features", [])]
+        return [self._place_from_feature(f, query) for f in data.get("features", [])]
 
     def reverse(self, lat: float, lon: float) -> str:
         data = self._get(
@@ -174,7 +183,10 @@ class OpenRouteServiceProvider:
             f"{self.base_url}/v2/directions/{self.profile}/geojson",
             # `instructions: false` omits `segments`, the only per-leg
             # distance source. Units stay metric and convert below.
-            json={"coordinates": [[p.lon, p.lat] for p in waypoints]},
+            json={
+                "coordinates": [[p.lon, p.lat] for p in waypoints],
+                "radiuses": [SNAP_RADIUS_METERS] * len(waypoints),
+            },
             headers={
                 **self._auth_headers,
                 "Content-Type": "application/json",
@@ -221,6 +233,34 @@ class OpenRouteServiceProvider:
         return Route(legs=legs)
 
 
+def _tokens(text: str) -> set[str]:
+    return {t for t in re.findall(r"[a-z0-9]+", text.lower()) if len(t) > 1}
+
+
+def names_the_same_place(query: str, props: dict) -> bool:
+    """Whether a geocoder result plausibly answers the query it came from.
+
+    Pelias answers noise confidently: "zzzzqqqxxx not a place" returns a street
+    in Texas at confidence 0.8, and a misspelt town returns the state it is in.
+    Neither shares a name with what was asked for, and a state is not somewhere
+    a truck can be dispatched to.
+    """
+    if props.get("layer") in VAGUE_LAYERS:
+        return False
+
+    asked = _tokens(query)
+    if not asked:
+        return True
+
+    # Deliberately excludes the street-level `name`: the noise query above
+    # matches a street called Nottingham Place on the word "place" alone.
+    place = " ".join(
+        str(props.get(key, ""))
+        for key in ("locality", "localadmin", "county", "postalcode", "region_a")
+    )
+    return bool(asked & _tokens(place))
+
+
 def _describe_ors_error(response: requests.Response) -> str:
     try:
         payload = response.json().get("error")
@@ -235,10 +275,10 @@ def _describe_ors_error(response: requests.Response) -> str:
             "That trip is too long to route in one go, or the stops are not "
             "connected by road. Check that all three are on the same road network."
         )
-    if code == 2010 or "not found" in message.lower():
+    if code == 2010 or "routable point" in message or "not found" in message.lower():
         return (
-            "No road route could be found between those locations. One of them "
-            "may not be reachable by road."
+            "One of those locations is not close enough to a road a truck can "
+            "use. Try a nearby town or a street address."
         )
     if not message:
         return f"The routing service returned HTTP {response.status_code}."

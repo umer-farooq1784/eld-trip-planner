@@ -10,7 +10,12 @@ from __future__ import annotations
 import pytest
 
 from trips.services.geo import Place, simplify_polyline
-from trips.services.routing import METERS_PER_MILE, OpenRouteServiceProvider, RoutingError
+from trips.services.routing import (
+    METERS_PER_MILE,
+    OpenRouteServiceProvider,
+    RoutingError,
+    names_the_same_place,
+)
 
 WAYPOINTS = [
     Place("Dallas, TX", 32.7767, -96.797),
@@ -136,3 +141,54 @@ def test_simplification_is_a_no_op_below_three_points():
 def test_zero_tolerance_keeps_everything():
     points = [(30.0 + i * 0.001, -95.0) for i in range(50)]
     assert simplify_polyline(points, 0.0) == points
+
+
+def test_waypoints_are_given_a_wider_snapping_radius(monkeypatch):
+    """A city centroid can sit further than 350 m from a truck-legal road."""
+    captured = {}
+
+    class FakeResponse:
+        status_code = 200
+        def json(self):
+            return LIVE_RESPONSE
+
+    def fake_post(url, **kwargs):
+        captured.update(kwargs["json"])
+        return FakeResponse()
+
+    monkeypatch.setattr("trips.services.routing.requests.post", fake_post)
+    provider().route(WAYPOINTS)
+
+    assert captured["radiuses"] == [5000, 5000, 5000]
+    assert "units" not in captured, "metres are converted locally"
+    assert "instructions" not in captured, "omitting instructions drops segments"
+
+
+@pytest.mark.parametrize(
+    "query,props,expected",
+    [
+        ("Dallas, TX", {"layer": "locality", "locality": "Dallas", "region_a": "TX"}, True),
+        # match_type says fallback here, which is why it is not the signal used.
+        ("Denver, CO", {"layer": "locality", "locality": "Denver", "region_a": "CO"}, True),
+        ("Salt Lake City, UT",
+         {"layer": "locality", "locality": "Salt Lake City", "region_a": "UT"}, True),
+        ("1200 Commerce St, Dallas, TX",
+         {"layer": "address", "name": "1200 Commerce St", "locality": "Dallas"}, True),
+        ("75202", {"layer": "postalcode", "postalcode": "75202", "locality": "Dallas"}, True),
+        # Noise: matches a street called Nottingham Place on the word "place".
+        ("zzzzqqqxxx not a place",
+         {"layer": "address", "name": "2537 Nottingham Place", "locality": "Grand Prairie"},
+         False),
+        # A misspelling degrades to the state, which is not a destination.
+        ("Sprngfeld IL", {"layer": "region", "region_a": "IL"}, False),
+        # A street with no town is ambiguous.
+        ("Nottingham Place",
+         {"layer": "address", "name": "Nottingham Place", "locality": "Grand Prairie"}, False),
+    ],
+)
+def test_result_must_name_the_place_that_was_asked_for(query, props, expected):
+    assert names_the_same_place(query, props) is expected
+
+
+def test_a_query_with_no_usable_words_is_not_second_guessed():
+    assert names_the_same_place("!!!", {"layer": "locality", "locality": "Dallas"}) is True
