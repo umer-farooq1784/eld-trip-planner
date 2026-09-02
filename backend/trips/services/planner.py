@@ -275,6 +275,7 @@ def build_payload(
                 "depart_at": stop.end.isoformat(),
                 "duration_hours": round(stop.hours, 2),
                 "trip_miles": round(stop.trip_miles_at_start, 1),
+                "cycle_hours": round(stop.cycle_after, 2),
                 **_coords(locator, stop.trip_miles_at_start),
             }
             for index, stop in enumerate(simulation.stops)
@@ -350,6 +351,7 @@ def _persist(places, route, simulation, cycle_used_hours, start_at, payload) -> 
             depart_at=entry["depart_at"],
             duration_hours=entry["duration_hours"],
             trip_miles=entry["trip_miles"],
+            cycle_hours=entry["cycle_hours"],
             lat=entry["lat"],
             lon=entry["lon"],
         )

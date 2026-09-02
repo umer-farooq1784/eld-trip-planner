@@ -262,3 +262,17 @@ def test_geocode_responses_are_cacheable(api):
     response = api.get("/api/geocode/?q=Dallas")
     assert response.status_code == 200
     assert "max-age" in response.headers["Cache-Control"]
+
+
+@pytest.mark.django_db
+def test_each_stop_reports_the_cycle_clock(api):
+    created = api.post("/api/trips/", body(), content_type="application/json").json()
+    hours = [stop["cycle_hours"] for stop in created["stops"]]
+
+    assert all(h is not None for h in hours)
+    assert hours == sorted(hours), "the cycle only ever accumulates"
+    assert hours[0] >= created["inputs"]["cycle_used_hours"]
+    assert hours[-1] == pytest.approx(created["summary"]["cycle_hours_at_end"], abs=0.01)
+
+    fetched = api.get(f"/api/trips/{created['id']}/").json()
+    assert [s["cycle_hours"] for s in fetched["stops"]] == hours

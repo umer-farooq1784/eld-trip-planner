@@ -144,6 +144,8 @@ class Segment:
     miles: float = 0.0
     kind: StopKind | None = None
     trip_miles_at_start: float = 0.0
+    #: Cycle hours used once this segment is complete.
+    cycle_after: float = 0.0
 
     @property
     def hours(self) -> float:
@@ -280,6 +282,7 @@ class HosSimulator:
 
         if duty in ON_DUTY_STATUSES:
             self.cycle_used += hours
+        segment.cycle_after = self.cycle_used
 
         if duty is Duty.DRIVING:
             self.drive_in_shift += hours
@@ -484,6 +487,7 @@ def _clip_to_days(segments: Sequence[Segment]) -> dict[date, list[_Piece]]:
                 miles=source.miles * share,
                 kind=source.kind,
                 trip_miles_at_start=source.trip_miles_at_start,
+                cycle_after=source.cycle_after,
             )
             by_day.setdefault(cursor.date(), []).append(
                 _Piece(segment=piece, completes_source=stop == source.end)

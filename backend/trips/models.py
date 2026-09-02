@@ -67,6 +67,7 @@ class Stop(models.Model):
     depart_at = models.DateTimeField()
     duration_hours = models.FloatField()
     trip_miles = models.FloatField()
+    cycle_hours = models.FloatField(default=0)
     lat = models.FloatField(null=True, blank=True)
     lon = models.FloatField(null=True, blank=True)
 

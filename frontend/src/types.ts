@@ -55,6 +55,7 @@ export interface Stop {
   depart_at: string;
   duration_hours: number;
   trip_miles: number;
+  cycle_hours: number;
   lat?: number | null;
   lon?: number | null;
 }

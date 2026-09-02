@@ -149,13 +149,16 @@ export default function App() {
               <SummaryBar plan={plan} />
               <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5 xl:grid-cols-[minmax(0,1fr)_360px] print:hidden">
                 <RouteMap plan={plan} />
-                <section className="rounded-lg border border-rule bg-surface shadow-sm">
-                  <h2 className="border-b border-rule px-4 py-3 font-display text-base font-semibold text-ink">
-                    Itinerary
-                  </h2>
-                  <div className="max-h-[376px] overflow-y-auto px-4">
-                    <Itinerary plan={plan} />
+                <section className="flex flex-col overflow-hidden rounded-lg border border-rule
+                                    bg-surface shadow-sm xl:h-[440px]">
+                  <div className="border-b border-rule px-4 py-3">
+                    <h2 className="font-display text-base font-semibold text-ink">Itinerary</h2>
+                    <p className="mt-0.5 truncate text-xs text-ink-mid">
+                      {plan.inputs.current.label} → {plan.inputs.dropoff.label} ·{" "}
+                      {Math.round(plan.summary.total_miles).toLocaleString()} mi
+                    </p>
                   </div>
+                  <Itinerary plan={plan} />
                 </section>
               </div>
               <LogSheets key={plan.id ?? plan.summary.start_at} plan={plan} carrier={carrier} />

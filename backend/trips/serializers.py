@@ -124,6 +124,7 @@ def payload_from_trip(trip: Trip) -> dict:
                 "depart_at": stop.depart_at.isoformat(),
                 "duration_hours": stop.duration_hours,
                 "trip_miles": stop.trip_miles,
+                "cycle_hours": stop.cycle_hours,
                 "lat": stop.lat,
                 "lon": stop.lon,
             }
