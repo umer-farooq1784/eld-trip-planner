@@ -22,11 +22,11 @@ export function TripHistory({
           <button
             type="button" onClick={() => onOpen(trip.id)}
             aria-current={trip.id === activeId}
-            className={`block w-full px-4 py-2.5 text-left transition ${
+            className={`block w-full px-4 py-2 text-left transition ${
               trip.id === activeId ? "bg-accent-wash" : "hover:bg-sunken"
             }`}
           >
-            <span className="block truncate text-xs font-medium text-ink">
+            <span className="block truncate text-xs font-medium leading-snug text-ink">
               {trip.current_label} → {trip.dropoff_label}
             </span>
             <span className="font-mono text-[11px] text-ink-mute tabular">

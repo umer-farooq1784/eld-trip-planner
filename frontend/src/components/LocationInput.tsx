@@ -7,10 +7,11 @@ interface Props {
   hint: string;
   value: string;
   place: Place | null;
+  error?: string | null;
   onChange: (query: string, place: Place | null) => void;
 }
 
-export function LocationInput({ label, hint, value, place, onChange }: Props) {
+export function LocationInput({ label, hint, value, place, error, onChange }: Props) {
   const id = useId();
   const [options, setOptions] = useState<Place[]>([]);
   const [open, setOpen] = useState(false);
@@ -98,12 +99,17 @@ export function LocationInput({ label, hint, value, place, onChange }: Props) {
             setOpen(false);
           }
         }}
-        className="w-full rounded-md border border-rule bg-surface px-3 py-2 text-sm text-ink
-                   placeholder:text-ink-mute/70 focus:border-accent focus:outline-none"
+        aria-invalid={Boolean(error)}
+        className={`w-full rounded-md border bg-surface px-3 py-2 text-sm text-ink
+                    placeholder:text-ink-mute/70 focus:outline-none ${
+                      error ? "border-warn focus:border-warn" : "border-rule focus:border-accent"
+                    }`}
       />
 
       <span className="mt-1 block h-4 text-[11px]">
-        {loading ? (
+        {error ? (
+          <span className="text-warn">{error}</span>
+        ) : loading ? (
           <span className="text-ink-mute">Searching…</span>
         ) : place ? (
           <span className="font-mono text-good tabular">

@@ -86,7 +86,14 @@ export default function App() {
             </div>
             <CarrierPanel value={carrier} onChange={updateCarrier} />
             <div className="border-t border-rule">
-              <h2 className="px-4 pt-3 text-xs font-semibold text-ink">Recent trips</h2>
+              <div className="flex items-baseline gap-2 border-b border-rule-soft px-4 pb-2 pt-3.5">
+                <h2 className="text-sm font-semibold text-ink">Recent trips</h2>
+                {history.length > 0 && (
+                  <span className="font-mono text-[11px] text-ink-mute tabular">
+                    {history.length}
+                  </span>
+                )}
+              </div>
               <div className="max-h-72 overflow-y-auto">
                 <TripHistory trips={history} activeId={plan?.id ?? null} onOpen={open} />
               </div>

@@ -82,6 +82,12 @@ export function TripForm({
   const showCycleError = cycleProblem !== null && (touched || cycle !== "");
   const showStartError = startProblem !== null && (touched || startAt !== "");
 
+  // Only block the button on a value that is wrong, not one that is missing:
+  // a greyed button with nothing to explain it leaves the user stuck.
+  const hasBadValue = (cycle !== "" && !cycleValid) || (startAt !== "" && !startValid);
+  const missing = (field: Field) =>
+    touched && field.query.trim().length < 3 ? "Enter a location." : null;
+
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
     setTouched(true);
@@ -105,13 +111,13 @@ export function TripForm({
   return (
     <form onSubmit={submit} className="space-y-4">
       <LocationInput label="Current location" hint="Where the driver is now"
-        value={current.query} place={current.place}
+        value={current.query} place={current.place} error={missing(current)}
         onChange={(query, place) => setCurrent({ query, place })} />
       <LocationInput label="Pickup location" hint="Where the load is collected"
-        value={pickup.query} place={pickup.place}
+        value={pickup.query} place={pickup.place} error={missing(pickup)}
         onChange={(query, place) => setPickup({ query, place })} />
       <LocationInput label="Dropoff location" hint="Where the load is delivered"
-        value={dropoff.query} place={dropoff.place}
+        value={dropoff.query} place={dropoff.place} error={missing(dropoff)}
         onChange={(query, place) => setDropoff({ query, place })} />
 
       <div className="grid grid-cols-2 gap-3">
@@ -175,7 +181,7 @@ export function TripForm({
 
       <div className="flex items-center gap-3 pt-1">
         <button
-          type="submit" disabled={busy || !ready}
+          type="submit" disabled={busy || hasBadValue}
           className="flex-1 rounded-md bg-ink px-4 py-2.5 text-sm font-semibold text-white
                      transition hover:bg-ink/90 disabled:cursor-not-allowed disabled:opacity-45"
         >
