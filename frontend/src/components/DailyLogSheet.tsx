@@ -246,11 +246,13 @@ export const DailyLogSheet = forwardRef<SVGSVGElement, Props>(function DailyLogS
         Use time standard of home terminal.
       </text>
 
-      <text x={SHEET.pad} y={SHEET.remarksTop + 46} fontSize={TYPE.fieldValue} fontWeight={600}
-        fill={INK} fontFamily={SANS}>Shipping Documents:</text>
-      <Field x={SHEET.pad} y={SHEET.remarksTop + 84} width={92} label="DVL or Manifest No."
+      <text x={SHEET.pad} y={SHEET.remarksTop + 42} fontSize={TYPE.fieldValue} fontWeight={600}
+        fill={INK} fontFamily={SANS}>Shipping</text>
+      <text x={SHEET.pad} y={SHEET.remarksTop + 56} fontSize={TYPE.fieldValue} fontWeight={600}
+        fill={INK} fontFamily={SANS}>Documents:</text>
+      <Field x={SHEET.pad} y={SHEET.remarksTop + 96} width={96} label="DVL or Manifest No."
         value={carrier.manifest} />
-      <Field x={SHEET.pad} y={SHEET.remarksTop + 130} width={92} label="Shipper &amp; Commodity"
+      <Field x={SHEET.pad} y={SHEET.remarksTop + 142} width={96} label="Shipper &amp; Commodity"
         value={carrier.shipper} />
 
       <RecapBox day={day} />
@@ -282,18 +284,18 @@ function RecapBox({ day }: { day: DayLog }) {
       <text x={SHEET.pad} y={top + 10} fontSize={TYPE.recapHead} fontWeight={700} fill={INK}>Recap:</text>
       <text x={SHEET.pad} y={top + 23} fontSize={TYPE.recapLabel} fill={INK}>Complete at end of day</text>
 
-      <text x={166} y={top + 12} fontSize={TYPE.recapValue} fill={INK} fontFamily={MONO}
+      <text x={190} y={top + 12} fontSize={TYPE.recapValue} fill={INK} fontFamily={MONO}
         fontWeight={600} textAnchor="middle">{recap.on_duty_today.toFixed(2)}</text>
-      <line x1={124} y1={top + 17} x2={208} y2={top + 17} stroke={INK} strokeWidth={0.9} />
-      {["On duty hours today,", "Total lines 3 & 4"].map((line, i) => (
-        <text key={line} x={124} y={top + 30 + i * 12} fontSize={TYPE.recapLabel} fill={FAINT}>{line}</text>
+      <line x1={150} y1={top + 17} x2={230} y2={top + 17} stroke={INK} strokeWidth={0.9} />
+      {["On duty hours", "today, lines 3 & 4"].map((line, i) => (
+        <text key={line} x={150} y={top + 30 + i * 13} fontSize={TYPE.recapLabel} fill={FAINT}>{line}</text>
       ))}
 
-      <text x={236} y={top + 10} fontSize={TYPE.recapHead} fontWeight={700} fill={INK}>70 Hour /</text>
-      <text x={236} y={top + 23} fontSize={TYPE.recapHead} fontWeight={700} fill={INK}>8 Day Drivers</text>
+      <text x={248} y={top + 10} fontSize={TYPE.recapHead} fontWeight={700} fill={INK}>70 Hour /</text>
+      <text x={248} y={top + 23} fontSize={TYPE.recapHead} fontWeight={700} fill={INK}>8 Day Drivers</text>
 
       {columns.map(([letter, lines, value], index) => {
-        const x = 318 + index * 142;
+        const x = 330 + index * 142;
         return (
           <g key={letter}>
             <text x={x} y={top + 12} fontSize={TYPE.recapHead} fontWeight={700} fill={INK}>{letter}</text>
@@ -301,23 +303,23 @@ function RecapBox({ day }: { day: DayLog }) {
               fontFamily={MONO} fontWeight={600}>{value}</text>
             <line x1={x} y1={top + 17} x2={x + 124} y2={top + 17} stroke={INK} strokeWidth={0.9} />
             {lines.map((line, i) => (
-              <text key={line} x={x} y={top + 30 + i * 12} fontSize={TYPE.recapLabel} fill={FAINT}>{line}</text>
+              <text key={line} x={x} y={top + 30 + i * 13} fontSize={TYPE.recapLabel} fill={FAINT}>{line}</text>
             ))}
           </g>
         );
       })}
 
-      <text x={748} y={top + 10} fontSize={TYPE.recapHead} fontWeight={700} fill={FAINT}>60 Hour /</text>
-      <text x={748} y={top + 23} fontSize={TYPE.recapHead} fontWeight={700} fill={FAINT}>7 Day Drivers</text>
-      <text x={748} y={top + 40} fontSize={TYPE.recapLabel} fill={FAINT}>Not applicable:</text>
-      <text x={748} y={top + 53} fontSize={TYPE.recapLabel} fill={FAINT}>this driver runs 70/8.</text>
+      <text x={760} y={top + 10} fontSize={TYPE.recapHead} fontWeight={700} fill={FAINT}>60 Hour /</text>
+      <text x={760} y={top + 23} fontSize={TYPE.recapHead} fontWeight={700} fill={FAINT}>7 Day Drivers</text>
+      <text x={760} y={top + 43} fontSize={TYPE.recapLabel} fill={FAINT}>Not applicable:</text>
+      <text x={760} y={top + 56} fontSize={TYPE.recapLabel} fill={FAINT}>runs the 70/8 cycle.</text>
 
-      <text x={866} y={top + 10} fontSize={TYPE.recapLabel} fill={FAINT}>*If you took 34</text>
-      {["consecutive hours off", "duty you have 60/70", "hours available"].map((line, i) => (
-        <text key={line} x={866} y={top + 23 + i * 13} fontSize={TYPE.recapLabel} fill={FAINT}>{line}</text>
+      <text x={874} y={top + 10} fontSize={TYPE.recapLabel} fill={FAINT}>*If you took 34</text>
+      {["consecutive hours", "off duty you have", "60/70 available"].map((line, i) => (
+        <text key={line} x={874} y={top + 23 + i * 13} fontSize={TYPE.recapLabel} fill={FAINT}>{line}</text>
       ))}
 
-      <line x1={SHEET.pad} y1={top + 72} x2={SHEET.width - SHEET.pad} y2={top + 72}
+      <line x1={SHEET.pad} y1={top + 76} x2={SHEET.width - SHEET.pad} y2={top + 76}
         stroke={INK} strokeWidth={1.6} />
     </g>
   );
