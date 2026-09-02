@@ -71,10 +71,19 @@ export default function App() {
           <a
             href="https://www.fmcsa.dot.gov/regulations/hours-of-service"
             target="_blank" rel="noreferrer"
-            className="ml-auto rounded border border-white/20 px-2.5 py-1 text-[11px]
-                       text-white/70 transition hover:border-white/50 hover:text-white"
+            title="Opens the FMCSA hours-of-service regulations, 49 CFR § 395, on fmcsa.dot.gov"
+            className="ml-auto flex items-center gap-1.5 rounded border border-white/20 px-2.5 py-1.5
+                       text-[11px] text-white/70 transition hover:border-white/50 hover:text-white"
           >
-            49 CFR § 395
+            <span>
+              The rules behind this
+              <span className="ml-1 font-mono text-white/50">49 CFR § 395</span>
+            </span>
+            <svg viewBox="0 0 12 12" className="h-3 w-3 shrink-0" aria-hidden="true"
+              fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
+              <path d="M4.5 1.5h6v6M10.5 1.5 5 7M8 9.5v1h-6.5V4h1" />
+            </svg>
+            <span className="sr-only">(opens in a new tab)</span>
           </a>
         </div>
       </header>

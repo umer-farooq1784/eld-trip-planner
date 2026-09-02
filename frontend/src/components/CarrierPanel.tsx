@@ -1,15 +1,15 @@
 import { useState } from "react";
 import type { CarrierDetails } from "../lib/carrier";
 
-const FIELDS: [keyof CarrierDetails, string][] = [
-  ["carrier", "Carrier name"],
-  ["office", "Main office address"],
-  ["terminal", "Home terminal address"],
-  ["truck", "Truck / trailer numbers"],
-  ["driver", "Driver name"],
-  ["coDriver", "Co-driver"],
-  ["shipper", "Shipper & commodity"],
-  ["manifest", "DVL / manifest no."],
+const FIELDS: [keyof CarrierDetails, string, string][] = [
+  ["carrier", "Carrier name", "Longhaul Logistics LLC"],
+  ["office", "Main office address", "Street, city, state"],
+  ["terminal", "Home terminal address", "Street, city, state"],
+  ["truck", "Truck / trailer numbers", "Tractor 4187 / Trailer 22910"],
+  ["driver", "Driver name", "Name as it appears on the CDL"],
+  ["coDriver", "Co-driver", "Full name, or None"],
+  ["shipper", "Shipper & commodity", "Shipper name and what is hauled"],
+  ["manifest", "DVL / manifest no.", "BOL-449182"],
 ];
 
 export function CarrierPanel({
@@ -36,14 +36,16 @@ export function CarrierPanel({
             A record of duty status must name the carrier, its office, the vehicle and the
             driver. These are saved in this browser.
           </p>
-          {FIELDS.map(([key, label]) => (
+          {FIELDS.map(([key, label, placeholder]) => (
             <label key={key} className="block">
               <span className="mb-0.5 block text-[11px] text-ink-mid">{label}</span>
               <input
                 value={value[key]}
+                placeholder={placeholder}
                 onChange={(e) => onChange({ ...value, [key]: e.target.value })}
                 className="w-full rounded border border-rule bg-surface px-2 py-1.5 text-xs
-                           text-ink focus:border-accent focus:outline-none"
+                           text-ink placeholder:text-ink-mute/60 focus:border-accent
+                           focus:outline-none"
               />
             </label>
           ))}

@@ -110,13 +110,13 @@ export function TripForm({
 
   return (
     <form onSubmit={submit} className="space-y-4">
-      <LocationInput label="Current location" hint="Where the driver is now"
+      <LocationInput label="Current location" hint="e.g. Dallas, TX"
         value={current.query} place={current.place} error={missing(current)}
         onChange={(query, place) => setCurrent({ query, place })} />
-      <LocationInput label="Pickup location" hint="Where the load is collected"
+      <LocationInput label="Pickup location" hint="e.g. Houston, TX"
         value={pickup.query} place={pickup.place} error={missing(pickup)}
         onChange={(query, place) => setPickup({ query, place })} />
-      <LocationInput label="Dropoff location" hint="Where the load is delivered"
+      <LocationInput label="Dropoff location" hint="e.g. Atlanta, GA"
         value={dropoff.query} place={dropoff.place} error={missing(dropoff)}
         onChange={(query, place) => setDropoff({ query, place })} />
 
@@ -132,8 +132,9 @@ export function TripForm({
               onChange={(e) => setCycle(e.target.value)}
               aria-invalid={showCycleError}
               aria-describedby="cycle-hint"
+              placeholder="0"
               className={`w-full rounded-md border bg-surface px-3 py-2 pr-10 font-mono text-sm
-                          text-ink tabular focus:outline-none ${
+                          text-ink placeholder:text-ink-mute/60 tabular focus:outline-none ${
                             showCycleError
                               ? "border-warn focus:border-warn"
                               : "border-rule focus:border-accent"

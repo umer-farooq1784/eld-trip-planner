@@ -117,7 +117,9 @@ export function LocationInput({ label, hint, value, place, error, onChange }: Pr
           </span>
         ) : value.trim().length >= 3 ? (
           <span className="text-ink-mute">Pick a suggestion to pin the exact spot</span>
-        ) : null}
+        ) : (
+          <span className="text-ink-mute">City and state, or a full address</span>
+        )}
       </span>
 
       {open && options.length > 0 && (
