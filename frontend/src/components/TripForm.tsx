@@ -21,16 +21,34 @@ const MAX_CYCLE_HOURS = 70;
 const EARLIEST_DAYS_BACK = 8;
 const LATEST_DAYS_AHEAD = 30;
 
-function toLocalInput(date: Date) {
-  const d = new Date(date);
-  d.setSeconds(0, 0);
-  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+const DEFAULT_START_HOUR = 6;
+
+function toLocalDate(date: Date) {
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+    .toISOString()
+    .slice(0, 10);
 }
 
 function shiftDays(days: number) {
   const d = new Date();
   d.setDate(d.getDate() + days);
-  return toLocalInput(d);
+  return toLocalDate(d);
+}
+
+/** The next 06:00, which is a shift start rather than an arbitrary minute. */
+function nextShiftStart() {
+  const d = new Date();
+  if (d.getHours() >= DEFAULT_START_HOUR) d.setDate(d.getDate() + 1);
+  return toLocalDate(d);
+}
+
+/** Firefox only opens the picker from its icon; this opens it anywhere. */
+function openPicker(event: React.MouseEvent<HTMLInputElement>) {
+  try {
+    event.currentTarget.showPicker?.();
+  } catch {
+    /* unsupported, or the browser declined; typing still works */
+  }
 }
 
 export function TripForm({
@@ -43,9 +61,11 @@ export function TripForm({
   const [pickup, setPickup] = useState<Field>(EMPTY);
   const [dropoff, setDropoff] = useState<Field>(EMPTY);
   const [cycle, setCycle] = useState("0");
-  const [startAt, setStartAt] = useState(() => toLocalInput(new Date()));
+  const [startDate, setStartDate] = useState(nextShiftStart);
+  const [startTime, setStartTime] = useState("06:00");
   const [touched, setTouched] = useState(false);
 
+  const startAt = startDate && startTime ? `${startDate}T${startTime}` : "";
   const earliest = shiftDays(-EARLIEST_DAYS_BACK);
   const latest = shiftDays(LATEST_DAYS_AHEAD);
 
@@ -66,13 +86,14 @@ export function TripForm({
             ? `Limit is ${MAX_CYCLE_HOURS} hours.`
             : null;
 
-  const startValid = startAt !== "" && startAt >= earliest && startAt <= latest;
+  const startValid = startDate !== "" && startTime !== ""
+    && startDate >= earliest && startDate <= latest;
   const startProblem =
-    startAt === ""
-      ? "Pick when the trip starts."
-      : startAt < earliest
+    startDate === "" || startTime === ""
+      ? "Pick a date and time."
+      : startDate < earliest
         ? `No earlier than ${EARLIEST_DAYS_BACK} days ago.`
-        : startAt > latest
+        : startDate > latest
           ? `No later than ${LATEST_DAYS_AHEAD} days ahead.`
           : null;
 
@@ -80,11 +101,11 @@ export function TripForm({
   const ready = filled && cycleValid && startValid;
 
   const showCycleError = cycleProblem !== null && (touched || cycle !== "");
-  const showStartError = startProblem !== null && (touched || startAt !== "");
+  const showStartError = startProblem !== null && (touched || startDate !== "");
 
   // Only block the button on a value that is wrong, not one that is missing:
   // a greyed button with nothing to explain it leaves the user stuck.
-  const hasBadValue = (cycle !== "" && !cycleValid) || (startAt !== "" && !startValid);
+  const hasBadValue = (cycle !== "" && !cycleValid) || (startDate !== "" && !startValid);
   const missing = (field: Field) =>
     touched && field.query.trim().length < 3 ? "Enter a location." : null;
 
@@ -154,23 +175,37 @@ export function TripForm({
         </div>
 
         <div>
-          <label htmlFor="start" className="mb-1 block text-xs font-semibold text-ink">
-            Trip start
-          </label>
-          <input
-            id="start" type="datetime-local" value={startAt}
-            min={earliest} max={latest}
-            style={{ colorScheme: "light" }}
-            onChange={(e) => setStartAt(e.target.value)}
-            aria-invalid={showStartError}
-            aria-describedby="start-hint"
-            className={`w-full rounded-md border bg-surface px-2.5 py-2 font-mono text-[13px]
-                        text-ink tabular focus:outline-none ${
-                          showStartError
-                            ? "border-warn focus:border-warn"
-                            : "border-rule focus:border-accent"
-                        }`}
-          />
+          <span className="mb-1 block text-xs font-semibold text-ink">Trip start</span>
+          <div className="grid grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] gap-2">
+            <input
+              id="start" type="date" value={startDate}
+              min={earliest} max={latest}
+              onClick={openPicker}
+              onChange={(e) => setStartDate(e.target.value)}
+              aria-label="Trip start date"
+              aria-invalid={showStartError}
+              aria-describedby="start-hint"
+              className={`w-full rounded-md border bg-surface px-2.5 py-2 font-mono text-[13px]
+                          text-ink tabular focus:outline-none ${
+                            showStartError
+                              ? "border-warn focus:border-warn"
+                              : "border-rule focus:border-accent"
+                          }`}
+            />
+            <input
+              type="time" value={startTime} step={900}
+              onClick={openPicker}
+              onChange={(e) => setStartTime(e.target.value)}
+              aria-label="Trip start time"
+              aria-invalid={showStartError}
+              className={`w-full rounded-md border bg-surface px-2.5 py-2 font-mono text-[13px]
+                          text-ink tabular focus:outline-none ${
+                            showStartError
+                              ? "border-warn focus:border-warn"
+                              : "border-rule focus:border-accent"
+                          }`}
+            />
+          </div>
           <span id="start-hint"
             className="mt-1 block min-h-8 text-[11px] leading-tight text-ink-mute">
             {showStartError ? (
