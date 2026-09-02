@@ -176,7 +176,7 @@ export function TripForm({
 
         <div>
           <span className="mb-1 block text-xs font-semibold text-ink">Trip start</span>
-          <div className="grid grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] gap-2">
+          <div className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
             <input
               id="start" type="date" value={startDate}
               min={earliest} max={latest}
@@ -185,8 +185,8 @@ export function TripForm({
               aria-label="Trip start date"
               aria-invalid={showStartError}
               aria-describedby="start-hint"
-              className={`w-full rounded-md border bg-surface px-2.5 py-2 font-mono text-[13px]
-                          text-ink tabular focus:outline-none ${
+              className={`w-full min-w-0 rounded-md border bg-surface px-2.5 py-2 font-mono
+                          text-[13px] text-ink tabular focus:outline-none ${
                             showStartError
                               ? "border-warn focus:border-warn"
                               : "border-rule focus:border-accent"
@@ -198,8 +198,8 @@ export function TripForm({
               onChange={(e) => setStartTime(e.target.value)}
               aria-label="Trip start time"
               aria-invalid={showStartError}
-              className={`w-full rounded-md border bg-surface px-2.5 py-2 font-mono text-[13px]
-                          text-ink tabular focus:outline-none ${
+              className={`w-full min-w-0 rounded-md border bg-surface px-2.5 py-2 font-mono
+                          text-[13px] text-ink tabular focus:outline-none ${
                             showStartError
                               ? "border-warn focus:border-warn"
                               : "border-rule focus:border-accent"
