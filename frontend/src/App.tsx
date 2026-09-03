@@ -39,12 +39,12 @@ export default function App() {
   useEffect(refreshHistory, [refreshHistory]);
 
   const submit = async (payload: PlanRequest) => {
+    setFormOpen(false);
     setBusy(true);
     setError(null);
     try {
       const result = await planTrip(payload);
       setPlan(result);
-      setFormOpen(false);
       refreshHistory();
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
@@ -76,13 +76,11 @@ export default function App() {
               Hours-of-service routing and DOT daily logs, 70&nbsp;hr / 8&nbsp;day
             </p>
           </div>
-          <div className="ml-auto flex items-center gap-2">
-            <PlanTripButton onClick={() => setFormOpen(true)} size="header" onDark />
           <a
             href="https://www.fmcsa.dot.gov/regulations/hours-of-service"
             target="_blank" rel="noreferrer"
             title="Opens the FMCSA hours-of-service regulations, 49 CFR § 395, on fmcsa.dot.gov"
-            className="flex items-center gap-1.5 rounded border border-white/20 px-2.5 py-1.5
+            className="ml-auto flex items-center gap-1.5 rounded border border-white/20 px-2.5 py-1.5
                        text-[11px] text-white/70 transition hover:border-white/50 hover:text-white"
           >
             <span>
@@ -95,7 +93,6 @@ export default function App() {
             </svg>
             <span className="sr-only">(opens in a new tab)</span>
           </a>
-          </div>
         </div>
       </header>
 
@@ -176,7 +173,6 @@ export default function App() {
 
       <TripDialog
         open={formOpen}
-        busy={busy}
         onSubmit={submit}
         onClose={() => setFormOpen(false)}
       />
@@ -258,9 +254,7 @@ function EmptyState({
             Every required rest, 30-minute break and fuel stop is placed for you, on the
             70&nbsp;hr / 8&nbsp;day cycle.
           </p>
-          <div className="ml-auto">
-            <PlanTripButton onClick={onPlan} size="hero" />
-          </div>
+          <PlanTripButton onClick={onPlan} />
         </div>
       </div>
 

@@ -4,12 +4,11 @@ import { TripForm } from "./TripForm";
 
 interface Props {
   open: boolean;
-  busy: boolean;
   onSubmit: (payload: PlanRequest) => void;
   onClose: () => void;
 }
 
-export function TripDialog({ open, busy, onSubmit, onClose }: Props) {
+export function TripDialog({ open, onSubmit, onClose }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -24,7 +23,7 @@ export function TripDialog({ open, busy, onSubmit, onClose }: Props) {
       ref={ref}
       onClose={onClose}
       onClick={(e) => {
-        if (e.target === ref.current && !busy) onClose();
+        if (e.target === ref.current) onClose();
       }}
       aria-labelledby="trip-title"
       className="m-0 mt-auto w-full max-w-none rounded-t-2xl border border-rule bg-surface p-0
@@ -43,10 +42,9 @@ export function TripDialog({ open, busy, onSubmit, onClose }: Props) {
           <button
             type="button"
             onClick={onClose}
-            disabled={busy}
             aria-label="Close"
             className="-mr-1 ml-auto shrink-0 rounded p-1.5 text-ink-mute transition
-                       hover:bg-sunken hover:text-ink disabled:opacity-40"
+                       hover:bg-sunken hover:text-ink"
           >
             <svg viewBox="0 0 14 14" className="h-4 w-4" fill="none" stroke="currentColor"
               strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
@@ -56,7 +54,7 @@ export function TripDialog({ open, busy, onSubmit, onClose }: Props) {
         </header>
 
         <div className="overflow-y-auto px-5 py-4">
-          <TripForm onSubmit={onSubmit} busy={busy} />
+          <TripForm onSubmit={onSubmit} busy={false} />
         </div>
       </div>
     </dialog>
