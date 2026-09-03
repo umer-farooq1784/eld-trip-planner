@@ -3,7 +3,8 @@ import { ApiError, getTrip, listTrips, planTrip, type PlanRequest } from "./api"
 import type { DayLog, TripPlan, TripSummaryRow } from "./types";
 import { DEFAULT_CARRIER, loadCarrier, saveCarrier, type CarrierDetails } from "./lib/carrier";
 import { TripForm } from "./components/TripForm";
-import { CarrierPanel } from "./components/CarrierPanel";
+import { CarrierDialog } from "./components/CarrierDialog";
+import { CarrierButton } from "./components/CarrierButton";
 import { SummaryBar } from "./components/SummaryBar";
 import { PreviewMap, RouteMap } from "./components/RouteMap";
 import { Itinerary } from "./components/Itinerary";
@@ -17,6 +18,7 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [carrier, setCarrier] = useState<CarrierDetails>(DEFAULT_CARRIER);
+  const [carrierOpen, setCarrierOpen] = useState(false);
 
   useEffect(() => setCarrier(loadCarrier()), []);
 
@@ -99,7 +101,6 @@ export default function App() {
             <div className="p-4">
               <TripForm onSubmit={submit} busy={busy} />
             </div>
-            <CarrierPanel value={carrier} onChange={updateCarrier} />
             <div className="border-t border-rule">
               <div className="flex items-baseline gap-2 border-b border-rule-soft px-4 pb-2 pt-3.5">
                 <h2 className="text-sm font-semibold text-ink">Recent trips</h2>
@@ -136,7 +137,9 @@ export default function App() {
 
           {busy && !plan && <Skeleton />}
 
-          {!busy && !plan && <EmptyState carrier={carrier} />}
+          {!busy && !plan && (
+            <EmptyState carrier={carrier} onEditCarrier={() => setCarrierOpen(true)} />
+          )}
 
           {plan && (
             <div className="relative">
@@ -146,7 +149,7 @@ export default function App() {
                 aria-busy={busy}
               >
                 <div className="space-y-5">
-              <SummaryBar plan={plan} />
+              <SummaryBar plan={plan} onEditCarrier={() => setCarrierOpen(true)} />
               <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5 xl:grid-cols-[minmax(0,1fr)_360px] print:hidden">
                 <RouteMap plan={plan} />
                 <section className="flex flex-col overflow-hidden rounded-lg border border-rule
@@ -168,10 +171,16 @@ export default function App() {
           )}
         </div>
       </main>
+
+      <CarrierDialog
+        open={carrierOpen}
+        value={carrier}
+        onChange={updateCarrier}
+        onClose={() => setCarrierOpen(false)}
+      />
     </div>
   );
 }
-
 function PlanningOverlay() {
   return (
     <div
@@ -219,7 +228,13 @@ const BLANK_DAY: DayLog = {
   },
 };
 
-function EmptyState({ carrier }: { carrier: CarrierDetails }) {
+function EmptyState({
+  carrier,
+  onEditCarrier,
+}: {
+  carrier: CarrierDetails;
+  onEditCarrier: () => void;
+}) {
   return (
     <div className="space-y-5">
       <div className="rounded-lg border border-rule bg-surface shadow-sm">
@@ -236,10 +251,13 @@ function EmptyState({ carrier }: { carrier: CarrierDetails }) {
             </div>
           ))}
         </div>
-        <p className="border-t border-rule-soft px-4 py-2 text-xs text-ink-mid">
-          Enter a trip on the left. Every required rest, 30-minute break and fuel stop is
-          placed for you, on the 70&nbsp;hr / 8&nbsp;day cycle.
-        </p>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-rule-soft px-4 py-2">
+          <p className="text-xs text-ink-mid">
+            Enter a trip on the left. Every required rest, 30-minute break and fuel stop is
+            placed for you, on the 70&nbsp;hr / 8&nbsp;day cycle.
+          </p>
+          <CarrierButton onClick={onEditCarrier} />
+        </div>
       </div>
 
       <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
