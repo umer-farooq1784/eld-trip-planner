@@ -1,5 +1,5 @@
 import type { TripPlan } from "../types";
-import { CarrierButton } from "./CarrierButton";
+import { PlanTripButton } from "./PlanTripButton";
 
 function Stat({ label, value, unit, tone = "" }: {
   label: string; value: string; unit?: string; tone?: string;
@@ -19,10 +19,10 @@ function Stat({ label, value, unit, tone = "" }: {
 
 export function SummaryBar({
   plan,
-  onEditCarrier,
+  onPlan,
 }: {
   plan: TripPlan;
-  onEditCarrier: () => void;
+  onPlan: () => void;
 }) {
   const s = plan.summary;
   const remaining = s.cycle_hours_remaining;
@@ -48,10 +48,10 @@ export function SummaryBar({
         {s.restarts > 0 && (
           <span className="font-semibold text-warn">{s.restarts} × 34-hour restart</span>
         )}
-        <span className="rounded bg-good-wash px-2 py-0.5 font-semibold text-good">
+        <span className="ml-auto rounded bg-good-wash px-2 py-0.5 font-semibold text-good">
           No HOS violations
         </span>
-        <CarrierButton onClick={onEditCarrier} />
+        <PlanTripButton onClick={onPlan} label="New trip" />
       </div>
 
       {plan.route.is_estimated && (

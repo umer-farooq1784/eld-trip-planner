@@ -2,9 +2,9 @@ import { useCallback, useEffect, useState } from "react";
 import { ApiError, getTrip, listTrips, planTrip, type PlanRequest } from "./api";
 import type { DayLog, TripPlan, TripSummaryRow } from "./types";
 import { DEFAULT_CARRIER, loadCarrier, saveCarrier, type CarrierDetails } from "./lib/carrier";
-import { TripForm } from "./components/TripForm";
-import { CarrierDialog } from "./components/CarrierDialog";
-import { CarrierButton } from "./components/CarrierButton";
+import { CarrierPanel } from "./components/CarrierPanel";
+import { TripDialog } from "./components/TripDialog";
+import { PlanTripButton } from "./components/PlanTripButton";
 import { SummaryBar } from "./components/SummaryBar";
 import { PreviewMap, RouteMap } from "./components/RouteMap";
 import { Itinerary } from "./components/Itinerary";
@@ -18,7 +18,7 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [carrier, setCarrier] = useState<CarrierDetails>(DEFAULT_CARRIER);
-  const [carrierOpen, setCarrierOpen] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
 
   useEffect(() => setCarrier(loadCarrier()), []);
 
@@ -44,6 +44,7 @@ export default function App() {
     try {
       const result = await planTrip(payload);
       setPlan(result);
+      setFormOpen(false);
       refreshHistory();
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
@@ -75,11 +76,13 @@ export default function App() {
               Hours-of-service routing and DOT daily logs, 70&nbsp;hr / 8&nbsp;day
             </p>
           </div>
+          <div className="ml-auto flex items-center gap-2">
+            <PlanTripButton onClick={() => setFormOpen(true)} size="header" onDark />
           <a
             href="https://www.fmcsa.dot.gov/regulations/hours-of-service"
             target="_blank" rel="noreferrer"
             title="Opens the FMCSA hours-of-service regulations, 49 CFR § 395, on fmcsa.dot.gov"
-            className="ml-auto flex items-center gap-1.5 rounded border border-white/20 px-2.5 py-1.5
+            className="flex items-center gap-1.5 rounded border border-white/20 px-2.5 py-1.5
                        text-[11px] text-white/70 transition hover:border-white/50 hover:text-white"
           >
             <span>
@@ -92,15 +95,14 @@ export default function App() {
             </svg>
             <span className="sr-only">(opens in a new tab)</span>
           </a>
+          </div>
         </div>
       </header>
 
       <main className="mx-auto grid max-w-[1400px] grid-cols-[minmax(0,1fr)] gap-5 px-5 py-5 lg:grid-cols-[340px_minmax(0,1fr)]">
-        <aside className="print:hidden lg:sticky lg:top-5 lg:self-start">
+        <aside className="order-2 print:hidden lg:order-1 lg:sticky lg:top-5 lg:self-start">
           <div className="rounded-lg border border-rule bg-surface shadow-sm">
-            <div className="p-4">
-              <TripForm onSubmit={submit} busy={busy} />
-            </div>
+            <CarrierPanel value={carrier} onChange={updateCarrier} />
             <div className="border-t border-rule">
               <div className="flex items-baseline gap-2 border-b border-rule-soft px-4 pb-2 pt-3.5">
                 <h2 className="text-sm font-semibold text-ink">Recent trips</h2>
@@ -127,7 +129,7 @@ export default function App() {
           </div>
         </aside>
 
-        <div className="min-w-0 space-y-5">
+        <div className="order-1 min-w-0 space-y-5 lg:order-2">
           {error && (
             <div role="alert"
               className="rounded-lg border border-warn/30 bg-warn-wash px-4 py-3 text-sm text-warn print:hidden">
@@ -138,7 +140,7 @@ export default function App() {
           {busy && !plan && <Skeleton />}
 
           {!busy && !plan && (
-            <EmptyState carrier={carrier} onEditCarrier={() => setCarrierOpen(true)} />
+            <EmptyState carrier={carrier} onPlan={() => setFormOpen(true)} />
           )}
 
           {plan && (
@@ -149,7 +151,7 @@ export default function App() {
                 aria-busy={busy}
               >
                 <div className="space-y-5">
-              <SummaryBar plan={plan} onEditCarrier={() => setCarrierOpen(true)} />
+              <SummaryBar plan={plan} onPlan={() => setFormOpen(true)} />
               <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5 xl:grid-cols-[minmax(0,1fr)_360px] print:hidden">
                 <RouteMap plan={plan} />
                 <section className="flex flex-col overflow-hidden rounded-lg border border-rule
@@ -172,11 +174,11 @@ export default function App() {
         </div>
       </main>
 
-      <CarrierDialog
-        open={carrierOpen}
-        value={carrier}
-        onChange={updateCarrier}
-        onClose={() => setCarrierOpen(false)}
+      <TripDialog
+        open={formOpen}
+        busy={busy}
+        onSubmit={submit}
+        onClose={() => setFormOpen(false)}
       />
     </div>
   );
@@ -230,10 +232,10 @@ const BLANK_DAY: DayLog = {
 
 function EmptyState({
   carrier,
-  onEditCarrier,
+  onPlan,
 }: {
   carrier: CarrierDetails;
-  onEditCarrier: () => void;
+  onPlan: () => void;
 }) {
   return (
     <div className="space-y-5">
@@ -251,12 +253,14 @@ function EmptyState({
             </div>
           ))}
         </div>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-rule-soft px-4 py-2">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-rule-soft px-4 py-3">
           <p className="text-xs text-ink-mid">
-            Enter a trip on the left. Every required rest, 30-minute break and fuel stop is
-            placed for you, on the 70&nbsp;hr / 8&nbsp;day cycle.
+            Every required rest, 30-minute break and fuel stop is placed for you, on the
+            70&nbsp;hr / 8&nbsp;day cycle.
           </p>
-          <CarrierButton onClick={onEditCarrier} />
+          <div className="ml-auto">
+            <PlanTripButton onClick={onPlan} size="hero" />
+          </div>
         </div>
       </div>
 
